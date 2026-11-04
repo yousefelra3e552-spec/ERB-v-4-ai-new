@@ -2,21 +2,17 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   LayoutDashboard,
-  Layers,
-  Sparkles,
-  PackageCheck,
+  Package,
   Palette,
   Scissors,
-  Printer,
-  Search,
+  Activity,
+  GitCommit,
   Settings,
   LogOut,
   UserCheck,
   ChevronDown,
   Menu,
-  X,
-  GitCommit,
-  Shirt
+  X
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -32,6 +28,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onLog
 
   const isSudo = currentUser?.username === 'sudo' || currentUser?.is_sudo;
 
+  // Exact 7 navigation items as requested
   const allNavItems = [
     { 
       id: 'dashboard', 
@@ -42,17 +39,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onLog
     },
     {
       id: 'warehouse',
-      label: 'مخزن القماش',
-      icon: Layers,
+      label: 'قسم المخازن',
+      icon: Package,
       color: 'text-blue-600',
-      isVisible: hasPermission('fabric_warehouse')
-    },
-    {
-      id: 'accessories_warehouse',
-      label: 'مخزن الإكسسوارات',
-      icon: Sparkles,
-      color: 'text-amber-600',
-      isVisible: hasPermission('accessories_warehouse')
+      isVisible:
+        hasPermission('fabric_warehouse') ||
+        hasPermission('accessories_warehouse') ||
+        hasPermission('production_warehouse')
     },
     {
       id: 'design',
@@ -69,32 +62,15 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onLog
       isVisible: hasPermission('cutting')
     },
     {
-      id: 'printing',
-      label: 'المطابع والتطريز',
-      icon: Printer,
+      id: 'production_control',
+      label: 'الـ production control (مطابع، مكن)',
+      icon: Activity,
       color: 'text-indigo-600',
-      isVisible: hasPermission('printing') || hasPermission('reports')
-    },
-    {
-      id: 'qc',
-      label: 'الفرز والكنترول',
-      icon: Search,
-      color: 'text-purple-600',
-      isVisible: hasPermission('qc')
-    },
-    {
-      id: 'sewing',
-      label: 'قسم المكن',
-      icon: Shirt,
-      color: 'text-emerald-600',
-      isVisible: hasPermission('sewing')
-    },
-    {
-      id: 'production_warehouse',
-      label: 'مخزن الإنتاج',
-      icon: PackageCheck,
-      color: 'text-teal-600',
-      isVisible: hasPermission('production_warehouse')
+      isVisible:
+        hasPermission('printing') ||
+        hasPermission('qc') ||
+        hasPermission('sewing') ||
+        hasPermission('reports')
     },
     {
       id: 'models_tracking',
@@ -105,7 +81,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onLog
     },
     {
       id: 'settings',
-      label: 'الإعدادات والصلاحيات',
+      label: 'الإعدادات',
       icon: Settings,
       color: 'text-slate-600',
       isVisible: isSudo || currentUser?.role === 'owner' || currentUser?.role === 'مدير عام المصنع'
@@ -117,6 +93,51 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onLog
   const handleNavClick = (tabId: string) => {
     setCurrentTab(tabId);
     setMobileMenuOpen(false);
+  };
+
+  const isTabActive = (itemId: string) => {
+    if (currentTab === itemId) return true;
+    if (
+      itemId === 'warehouse' &&
+      (currentTab === 'warehouse' ||
+        currentTab === 'accessories_warehouse' ||
+        currentTab === 'production_warehouse')
+    ) {
+      return true;
+    }
+    if (
+      itemId === 'design' &&
+      (currentTab === 'design' || currentTab === 'model_details')
+    ) {
+      return true;
+    }
+    if (
+      itemId === 'cutting' &&
+      (currentTab === 'cutting' || currentTab === 'cutting_details')
+    ) {
+      return true;
+    }
+    if (
+      itemId === 'production_control' &&
+      (currentTab === 'production_control' ||
+        currentTab === 'printing' ||
+        currentTab === 'assembly' ||
+        currentTab === 'qc' ||
+        currentTab === 'qc_details' ||
+        currentTab === 'sewing')
+    ) {
+      return true;
+    }
+    if (itemId === 'models_tracking' && currentTab === 'models_tracking') {
+      return true;
+    }
+    if (
+      itemId === 'settings' &&
+      (currentTab === 'settings' || currentTab === 'logs')
+    ) {
+      return true;
+    }
+    return false;
   };
 
   return (
@@ -136,27 +157,22 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onLog
           </div>
 
           {/* Desktop Nav Links */}
-          <div className="hidden xl:flex items-center gap-1 overflow-x-auto py-1">
+          <div className="hidden lg:flex items-center gap-1.5 overflow-x-auto py-1">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive =
-                currentTab === item.id ||
-                (currentTab === 'model_details' && item.id === 'design') ||
-                (currentTab === 'cutting_details' && item.id === 'cutting') ||
-                (currentTab === 'qc_details' && item.id === 'qc') ||
-                (currentTab === 'logs' && item.id === 'settings');
+              const isActive = isTabActive(item.id);
 
               return (
                 <button
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold transition-all duration-150 whitespace-nowrap ${
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-bold transition-all duration-150 whitespace-nowrap ${
                     isActive
                       ? 'bg-slate-900 text-white shadow-xs'
                       : 'text-slate-700 hover:bg-slate-100/90'
                   }`}
                 >
-                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : item.color}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : item.color}`} />
                   <span>{item.label}</span>
                 </button>
               );
@@ -249,7 +265,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onLog
             {/* Mobile menu hamburger */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="xl:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100"
+              className="lg:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -258,15 +274,15 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onLog
 
         {/* Mobile menu dropdown */}
         {mobileMenuOpen && (
-          <div className="xl:hidden py-3 border-t border-slate-200 grid grid-cols-2 gap-1.5">
+          <div className="lg:hidden py-3 border-t border-slate-200 flex flex-col gap-1.5">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = currentTab === item.id;
+              const isActive = isTabActive(item.id);
               return (
                 <button
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
-                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition ${
+                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition ${
                     isActive ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'
                   }`}
                 >

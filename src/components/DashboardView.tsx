@@ -124,7 +124,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
               className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition shadow-xs"
             >
               <Package className="w-4 h-4" />
-              <span>مخزن القماش</span>
+              <span>قسم المخازن</span>
             </button>
           )}
 

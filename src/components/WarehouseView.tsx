@@ -272,7 +272,7 @@ export const WarehouseView: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-black text-slate-900">قسم المخزن</h1>
+                <h1 className="text-xl font-black text-slate-900">قسم المخازن</h1>
                 <span className="text-xs font-semibold px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full border border-blue-200">
                   مخازن المصنع
                 </span>
@@ -296,7 +296,7 @@ export const WarehouseView: React.FC = () => {
                 }`}
               >
                 <Layers className="w-3.5 h-3.5" />
-                <span>مخزن قماش</span>
+                <span>مخزن القماش</span>
                 {lowStockColors.length > 0 && (
                   <span className="px-1.5 py-0.2 bg-amber-500 text-white text-[10px] rounded-full font-mono">
                     {lowStockColors.length}
@@ -316,7 +316,7 @@ export const WarehouseView: React.FC = () => {
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5 text-pink-500" />
-                <span>مخزن اكسسوار</span>
+                <span>مخزن الإكسسوارات</span>
                 {lowAccessoryCount > 0 && (
                   <span className="px-1.5 py-0.2 bg-amber-500 text-white text-[10px] rounded-full font-mono">
                     {lowAccessoryCount}
@@ -336,10 +336,7 @@ export const WarehouseView: React.FC = () => {
                 }`}
               >
                 <Boxes className="w-3.5 h-3.5 text-indigo-500" />
-                <span>مخزن انتاج</span>
-                <span className="px-1.5 py-0.2 bg-amber-100 text-amber-800 text-[10px] rounded-full font-bold">
-                  قريباً
-                </span>
+                <span>مخزن الإنتاج التام</span>
               </button>
             )}
           </div>

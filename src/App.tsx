@@ -4,16 +4,12 @@ import { Navbar } from './components/Navbar';
 import { FlashAlerts } from './components/FlashAlerts';
 import { DashboardView } from './components/DashboardView';
 import { WarehouseView } from './components/WarehouseView';
-import { AccessoriesWarehouseView } from './components/AccessoriesWarehouseView';
-import { ProductionWarehouseView } from './components/ProductionWarehouseView';
 import { DesignView } from './components/DesignView';
 import { ModelDetailsView } from './components/ModelDetailsView';
 import { CuttingView } from './components/CuttingView';
 import { CuttingDetailsView } from './components/CuttingDetailsView';
-import { QCView } from './components/QCView';
 import { QCDetailsView } from './components/QCDetailsView';
-import { DispatchAssemblyView } from './components/DispatchAssemblyView';
-import { SewingView } from './components/SewingView';
+import { ProductionControlView } from './components/ProductionControlView';
 import { MasterModelTrackingView } from './components/MasterModelTrackingView';
 import { SettingsView } from './components/SettingsView';
 import { AuditLogsView } from './components/AuditLogsView';
@@ -33,14 +29,34 @@ export const App: React.FC = () => {
 
   const canAccessTab = (tab: string): boolean => {
     if (tab === 'dashboard') return true;
-    if (tab === 'warehouse') return hasPermission('fabric_warehouse');
-    if (tab === 'accessories_warehouse') return hasPermission('accessories_warehouse');
-    if (tab === 'production_warehouse') return hasPermission('production_warehouse');
+    if (
+      tab === 'warehouse' ||
+      tab === 'accessories_warehouse' ||
+      tab === 'production_warehouse'
+    ) {
+      return (
+        hasPermission('fabric_warehouse') ||
+        hasPermission('accessories_warehouse') ||
+        hasPermission('production_warehouse')
+      );
+    }
     if (tab === 'design' || tab === 'model_details') return hasPermission('design');
     if (tab === 'cutting' || tab === 'cutting_details') return hasPermission('cutting');
-    if (tab === 'printing' || tab === 'assembly') return hasPermission('printing') || hasPermission('reports');
-    if (tab === 'qc' || tab === 'qc_details') return hasPermission('qc');
-    if (tab === 'sewing') return hasPermission('sewing');
+    if (
+      tab === 'production_control' ||
+      tab === 'printing' ||
+      tab === 'assembly' ||
+      tab === 'qc' ||
+      tab === 'qc_details' ||
+      tab === 'sewing'
+    ) {
+      return (
+        hasPermission('printing') ||
+        hasPermission('qc') ||
+        hasPermission('sewing') ||
+        hasPermission('reports')
+      );
+    }
     if (tab === 'models_tracking') return hasPermission('models_tracking') || isSudoOrAdmin;
     if (tab === 'settings' || tab === 'logs') return isSudoOrAdmin;
     return true;
@@ -95,12 +111,12 @@ export const App: React.FC = () => {
           <DashboardView onNavigate={(tab, id) => handleNavigate(tab, id)} />
         )}
 
-        {currentTab === 'warehouse' && <WarehouseView />}
+        {/* Warehouses Hub (Fabric, Accessories, Production) */}
+        {(currentTab === 'warehouse' ||
+          currentTab === 'accessories_warehouse' ||
+          currentTab === 'production_warehouse') && <WarehouseView />}
 
-        {currentTab === 'accessories_warehouse' && <AccessoriesWarehouseView />}
-
-        {currentTab === 'production_warehouse' && <ProductionWarehouseView />}
-
+        {/* Design View */}
         {currentTab === 'design' && (
           <DesignView onOpenModelDetails={(id) => handleNavigate('model_details', id)} />
         )}
@@ -113,6 +129,7 @@ export const App: React.FC = () => {
           />
         )}
 
+        {/* Cutting View */}
         {currentTab === 'cutting' && (
           <CuttingView onOpenCuttingDetails={(id) => handleNavigate('cutting_details', id)} />
         )}
@@ -121,26 +138,30 @@ export const App: React.FC = () => {
           <CuttingDetailsView
             modelId={selectedModelId}
             onBack={() => handleNavigate('cutting')}
-            onFinishedToQC={() => handleNavigate('qc')}
+            onFinishedToQC={() => handleNavigate('production_control')}
           />
         )}
 
-        {currentTab === 'qc' && <QCView />}
+        {/* Production Control Hub (Printing, QC, Sewing) */}
+        {currentTab === 'production_control' && <ProductionControlView />}
+
+        {currentTab === 'printing' && <ProductionControlView initialSubTab="printing" />}
+        {currentTab === 'assembly' && <ProductionControlView initialSubTab="printing" />}
+        {currentTab === 'qc' && <ProductionControlView initialSubTab="qc" />}
+        {currentTab === 'sewing' && <ProductionControlView initialSubTab="sewing" />}
 
         {currentTab === 'qc_details' && (
           <QCDetailsView
             modelId={selectedModelId}
-            onBack={() => handleNavigate('qc')}
-            onFinishedApproval={() => handleNavigate('printing')}
+            onBack={() => handleNavigate('production_control')}
+            onFinishedApproval={() => handleNavigate('production_control')}
           />
         )}
 
-        {(currentTab === 'printing' || currentTab === 'assembly') && <DispatchAssemblyView />}
-
-        {currentTab === 'sewing' && <SewingView />}
-
+        {/* Master Model Tracking */}
         {currentTab === 'models_tracking' && <MasterModelTrackingView />}
 
+        {/* Settings & Audit Logs */}
         {currentTab === 'settings' && (
           <SettingsView onOpenLogs={() => handleNavigate('logs')} />
         )}
