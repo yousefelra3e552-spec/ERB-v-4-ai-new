@@ -468,7 +468,7 @@ export const AccessoriesWarehouseView: React.FC = () => {
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border border-slate-200 shrink-0">
                           {item.image ? (
-                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                            <img src={item.image} alt={item.name} className="w-full h-full object-contain bg-white" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-slate-400">
                               <ImageIcon className="w-5 h-5 text-slate-300" />
@@ -686,7 +686,7 @@ export const AccessoriesWarehouseView: React.FC = () => {
                     <img
                       src={item.image}
                       alt={item.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="w-full h-full object-contain bg-white group-hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-1 bg-slate-50">
@@ -1050,6 +1050,7 @@ export const AccessoriesWarehouseView: React.FC = () => {
               <table className="w-full text-xs text-start border border-slate-200">
                 <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                   <tr>
+                    <th className="p-2.5">الصورة</th>
                     <th className="p-2.5">الكود</th>
                     <th className="p-2.5">النوع</th>
                     <th className="p-2.5">اسم الصنف</th>
@@ -1064,6 +1065,17 @@ export const AccessoriesWarehouseView: React.FC = () => {
                 <tbody className="divide-y divide-slate-100">
                   {accessoryItems.map((item) => (
                     <tr key={item.id} className="hover:bg-slate-50">
+                      <td className="p-2.5">
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-8 h-8 rounded-lg object-contain bg-slate-50 border p-0.5"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                              'https://images.unsplash.com/photo-1544441893-675973e31985?w=100&auto=format&fit=crop&q=60';
+                          }}
+                        />
+                      </td>
                       <td className="p-2.5 font-mono font-bold text-blue-700">{item.code}</td>
                       <td className="p-2.5 font-semibold text-slate-600">{item.type_name}</td>
                       <td className="p-2.5 font-bold text-slate-900">{item.name}</td>
@@ -1198,6 +1210,7 @@ export const AccessoriesWarehouseView: React.FC = () => {
                       <thead className="bg-amber-100/70 text-amber-950 font-black border-b border-amber-200">
                         <tr>
                           <th className="p-2.5">م</th>
+                          <th className="p-2.5">الصورة</th>
                           <th className="p-2.5">الكود</th>
                           <th className="p-2.5">اسم الإكسسوار</th>
                           <th className="p-2.5">التصنيف</th>
@@ -1211,6 +1224,17 @@ export const AccessoriesWarehouseView: React.FC = () => {
                         {stockDeficits.map(({ item, supplier, available, threshold, deficit }, idx) => (
                           <tr key={item.id} className="hover:bg-amber-50/40">
                             <td className="p-2.5 text-slate-400">{idx + 1}</td>
+                            <td className="p-2.5">
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-8 h-8 rounded-lg object-contain bg-white border p-0.5"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    'https://images.unsplash.com/photo-1544441893-675973e31985?w=100&auto=format&fit=crop&q=60';
+                                }}
+                              />
+                            </td>
                             <td className="p-2.5 font-mono font-bold text-blue-700">{item.code}</td>
                             <td className="p-2.5 font-bold text-slate-900">{item.name}</td>
                             <td className="p-2.5 text-slate-600">{item.type_name}</td>
@@ -1248,6 +1272,7 @@ export const AccessoriesWarehouseView: React.FC = () => {
                       <thead className="bg-pink-100/70 text-pink-950 font-black border-b border-pink-200">
                         <tr>
                           <th className="p-2.5">م</th>
+                          <th className="p-2.5">الصورة</th>
                           <th className="p-2.5">الكود</th>
                           <th className="p-2.5">اسم الإكسسوار</th>
                           <th className="p-2.5">الموديل المخصص</th>
@@ -1261,6 +1286,17 @@ export const AccessoriesWarehouseView: React.FC = () => {
                         {modelDeficits.map(({ item, supplier, available, threshold, deficit }, idx) => (
                           <tr key={item.id} className="hover:bg-pink-50/40">
                             <td className="p-2.5 text-slate-400">{idx + 1}</td>
+                            <td className="p-2.5">
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-8 h-8 rounded-lg object-contain bg-white border p-0.5"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    'https://images.unsplash.com/photo-1544441893-675973e31985?w=100&auto=format&fit=crop&q=60';
+                                }}
+                              />
+                            </td>
                             <td className="p-2.5 font-mono font-bold text-blue-700">{item.code}</td>
                             <td className="p-2.5 font-bold text-slate-900">{item.name}</td>
                             <td className="p-2.5 font-black text-pink-700">موديل {item.custom_model_code || 'خاص'}</td>

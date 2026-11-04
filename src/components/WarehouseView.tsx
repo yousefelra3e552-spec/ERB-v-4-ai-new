@@ -1393,6 +1393,7 @@ export const WarehouseView: React.FC = () => {
                     <table className="w-full text-xs text-start">
                       <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                         <tr>
+                          <th className="px-4 py-3">عينة اللون / الصورة</th>
                           <th className="px-4 py-3">الخامة الأساسية</th>
                           <th className="px-4 py-3">كود اللون</th>
                           <th className="px-4 py-3">اسم اللون</th>
@@ -1416,6 +1417,15 @@ export const WarehouseView: React.FC = () => {
 
                           return (
                             <tr key={color.id} className="hover:bg-slate-50 transition">
+                              <td className="px-4 py-2.5">
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="w-7 h-7 rounded-lg border border-slate-300 shadow-2xs shrink-0"
+                                    style={{ backgroundColor: color.hex_code || '#3b82f6' }}
+                                    title={color.color_name}
+                                  />
+                                </div>
+                              </td>
                               <td className="px-4 py-2.5 font-bold text-slate-900">{fab?.name || 'خامة'}</td>
                               <td className="px-4 py-2.5 font-mono font-bold text-blue-700">{color.color_code}</td>
                               <td className="px-4 py-2.5 text-slate-600">{color.color_name || '-'}</td>

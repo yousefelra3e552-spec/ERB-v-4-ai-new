@@ -478,7 +478,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                       <img
                         src={m.image}
                         alt={m.model_code}
-                        className="w-10 h-10 rounded-xl object-cover border border-slate-200"
+                        className="w-10 h-10 rounded-xl object-contain bg-white border border-slate-200 p-0.5"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src =
                             'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=100&auto=format&fit=crop&q=60';

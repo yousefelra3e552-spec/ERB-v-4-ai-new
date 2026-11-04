@@ -226,7 +226,7 @@ export const MasterModelTrackingView: React.FC = () => {
                               <img
                                 src={model.image}
                                 alt={model.model_code}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-contain bg-white"
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-slate-400">

@@ -23,6 +23,8 @@ import {
   Compass,
   Coins,
   MessageCircle,
+  MessageSquare,
+  Send,
   Eye,
   Edit3
 } from 'lucide-react';
@@ -146,7 +148,8 @@ const DEFAULT_PERMISSIONS: RolePermissions = {
   edit_accessory_prices: false,
   view_printing_costs: false,
   edit_printing_costs: false,
-  send_whatsapp_requests: false
+  send_whatsapp_requests: false,
+  send_internal_messages: false
 };
 
 export const RoleManagementSection: React.FC = () => {
@@ -719,6 +722,25 @@ export const RoleManagementSection: React.FC = () => {
                       </span>
                       <span className="text-[11px] text-emerald-800">
                         إظهار أزرار التواصل المباشر وإرسال طلبات النواقص للموردين عبر الواتساب في مخازن الأقمشة والإكسسوارات.
+                      </span>
+                    </div>
+                  </label>
+
+                  {/* Internal Messaging Permission */}
+                  <label className="sm:col-span-2 flex items-center gap-3 p-3 bg-blue-50/80 rounded-2xl border border-blue-300 hover:border-blue-500 cursor-pointer transition shadow-2xs">
+                    <input
+                      type="checkbox"
+                      checked={permissions.send_internal_messages}
+                      onChange={() => handleToggleFinancial('send_internal_messages')}
+                      className="w-4 h-4 text-blue-600 rounded-sm focus:ring-blue-500"
+                    />
+                    <div className="text-start">
+                      <span className="font-black text-xs text-blue-950 block flex items-center gap-1.5">
+                        <Send className="w-3.5 h-3.5 text-blue-600" />
+                        إرسال الرسائل والمراسلات الداخلية (Can Send Internal Messages)
+                      </span>
+                      <span className="text-[11px] text-blue-800">
+                        السماح للمستخدم بإرسال ومراسلة الزملاء مباشرة في نظام الرسائل والتوجيهات الداخلية.
                       </span>
                     </div>
                   </label>

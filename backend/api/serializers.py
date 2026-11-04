@@ -3,7 +3,7 @@ from .models import (
     Role, UserProfile, Fabric, Accessory, 
     ModelItem, ModelAccessory, ModelTimeline, 
     CuttingRecord, QCRecord, PrintDispatch,
-    SewingDispatch, AppNotification
+    SewingDispatch, AppNotification, InternalMessage
 )
 
 class RoleSerializer(serializers.ModelSerializer):
@@ -127,3 +127,20 @@ class ModelItemSerializer(serializers.ModelSerializer):
             if user_profile and not user_profile.has_perm('can_view_printing_costs'):
                 ret['print_cost_per_piece'] = None
         return ret
+
+
+class InternalMessageSerializer(serializers.ModelSerializer):
+    sender_name = serializers.CharField(source='sender.real_name', read_only=True)
+    sender_username = serializers.CharField(source='sender.username', read_only=True)
+    receiver_name = serializers.CharField(source='receiver.real_name', read_only=True)
+    receiver_username = serializers.CharField(source='receiver.username', read_only=True)
+
+    class Meta:
+        model = InternalMessage
+        fields = [
+            'id', 'sender', 'sender_name', 'sender_username',
+            'receiver', 'receiver_name', 'receiver_username',
+            'content', 'is_read', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
+

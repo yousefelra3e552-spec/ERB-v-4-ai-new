@@ -43,6 +43,9 @@ export interface RolePermissions {
 
   // Warehouse WhatsApp dispatch permissions
   send_whatsapp_requests: boolean;
+
+  // Internal messaging permission
+  send_internal_messages: boolean;
 }
 
 export interface CustomRole {
@@ -78,6 +81,7 @@ export interface UserPermissions {
   view_printing_costs?: boolean;
   edit_printing_costs?: boolean;
   send_whatsapp_requests?: boolean;
+  send_internal_messages?: boolean;
 }
 
 export interface User {
@@ -208,6 +212,17 @@ export interface DesignModel {
   sewing_expected_date?: string;
   sewing_pieces_count?: number;
 
+  // Split sewing independent tracking for Shirt & Pants (Requirement 2)
+  sewing_shirt_workshop?: string;
+  sewing_shirt_expected_date?: string;
+  sewing_shirt_status?: SewingDispatchStatus;
+  sewing_shirt_pieces?: number;
+
+  sewing_pants_workshop?: string;
+  sewing_pants_expected_date?: string;
+  sewing_pants_status?: SewingDispatchStatus;
+  sewing_pants_pieces?: number;
+
   // Split operating notes
   notes_shirt: string;
   notes_pants: string;
@@ -307,8 +322,21 @@ export interface SewingDispatch {
   dispatched_at: string;
   expected_delivery_date: string;
   status: SewingDispatchStatus;
+  piece_type?: 'shirt' | 'pants';
+  piece_label?: string; // "تيشرت" or "بنطلون"
   received_at?: string;
   notes?: string;
+}
+
+export interface InternalMessage {
+  id: string;
+  sender_id: string;
+  sender_name: string;
+  receiver_id: string;
+  receiver_name: string;
+  content: string;
+  created_at: string;
+  is_read: boolean;
 }
 
 export type NotificationUrgency = 'tomorrow' | 'today' | 'overdue';

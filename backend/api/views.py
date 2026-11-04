@@ -1,19 +1,20 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from django.db import models
 from django.utils import timezone
 from datetime import date
 from .models import (
     Role, UserProfile, Fabric, Accessory, 
     ModelItem, ModelAccessory, ModelTimeline, 
     CuttingRecord, QCRecord, PrintDispatch,
-    SewingDispatch, AppNotification
+    SewingDispatch, AppNotification, InternalMessage
 )
 from .serializers import (
     RoleSerializer, UserProfileSerializer, FabricSerializer,
     AccessorySerializer, ModelItemSerializer, CuttingRecordSerializer,
     QCRecordSerializer, PrintDispatchSerializer, SewingDispatchSerializer,
-    AppNotificationSerializer
+    AppNotificationSerializer, InternalMessageSerializer
 )
 from .services import (
     get_accessory_deficits, 
@@ -104,11 +105,15 @@ class ModelItemViewSet(BasePermViewSet):
         expected_date = request.data.get('expected_delivery_date')
         notes = request.data.get('notes', '')
         user = request.data.get('user', 'مدير الإنتاج')
+        piece_type = request.data.get('piece_type', 'shirt')
+        piece_label = request.data.get('piece_label')
 
         if not workshop_name or not expected_date or pieces_count <= 0:
             return Response({'error': 'اسم الورشة وتاريخ الاستلام المتوقع والقطع المسلمة مطلوبة'}, status=status.HTTP_400_BAD_REQUEST)
 
-        disp = dispatch_model_to_sewing_service(pk, workshop_name, pieces_count, expected_date, notes, user)
+        disp = dispatch_model_to_sewing_service(
+            pk, workshop_name, pieces_count, expected_date, notes, user, piece_type, piece_label
+        )
         return Response(SewingDispatchSerializer(disp).data)
 
     @action(detail=True, methods=['post'])
@@ -245,3 +250,59 @@ class NotificationViewSet(viewsets.ViewSet):
             'today_count': sum(1 for n in notifs if n['urgency'] == 'today'),
             'tomorrow_count': sum(1 for n in notifs if n['urgency'] == 'tomorrow')
         })
+
+
+class InternalMessageViewSet(BasePermViewSet):
+    """
+    Internal direct messaging between system users.
+    Enforces can_send_messages permission before allowing sending.
+    """
+    queryset = InternalMessage.objects.all()
+    serializer_class = InternalMessageSerializer
+
+    def get_queryset(self):
+        user_profile = getattr(self.request, 'user_profile', None)
+        if not user_profile:
+            return InternalMessage.objects.all()
+        # Return messages where current user is either sender or receiver
+        return InternalMessage.objects.filter(
+            models.Q(sender=user_profile) | models.Q(receiver=user_profile)
+        )
+
+    def create(self, request, *args, **kwargs):
+        user_profile = getattr(request, 'user_profile', None)
+        if not user_profile:
+            return Response({'error': 'المستخدم غير معرف'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Dynamic permission check: must have can_send_messages or is_sudo
+        if not user_profile.has_perm('can_send_messages'):
+            return Response(
+                {'error': 'ليس لديك صلاحية إرسال الرسائل والمراسلات الداخلية. يرجى مراجعة إدارة Sudo.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        receiver_id = request.data.get('receiver')
+        content = request.data.get('content', '').strip()
+
+        if not receiver_id or not content:
+            return Response({'error': 'يجب تحديد المستلم وكتابة نص الرسالة'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            receiver = UserProfile.objects.get(id=receiver_id)
+        except UserProfile.DoesNotExist:
+            return Response({'error': 'المستلم غير موجود'}, status=status.HTTP_404_NOT_FOUND)
+
+        msg = InternalMessage.objects.create(
+            sender=user_profile,
+            receiver=receiver,
+            content=content
+        )
+        return Response(InternalMessageSerializer(msg).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def mark_read(self, request, pk=None):
+        msg = self.get_object()
+        msg.is_read = True
+        msg.save()
+        return Response({'status': 'marked as read', 'message_id': msg.id})
+

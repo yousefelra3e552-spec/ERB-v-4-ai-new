@@ -29,8 +29,9 @@ class Role(models.Model):
     can_view_printing_costs = models.BooleanField(default=False, verbose_name="رؤية تكاليف المطابع")
     can_edit_printing_costs = models.BooleanField(default=False, verbose_name="تعديل تكاليف المطابع")
     
-    # WhatsApp Requests Permission
+    # Sensitive & Communication Permissions
     can_send_whatsapp = models.BooleanField(default=False, verbose_name="إرسال طلبات النواقص عبر الواتساب")
+    can_send_messages = models.BooleanField(default=False, verbose_name="إرسال الرسائل والمراسلات الداخلية")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -145,6 +146,17 @@ class ModelItem(models.Model):
     sewing_expected_date = models.DateField(blank=True, null=True, verbose_name="تاريخ الاستلام المتوقع من ورشة المكن")
     sewing_pieces_count = models.IntegerField(default=0, verbose_name="عدد القطع بورشة المكن")
     
+    # Split Sewing independent tracking for Shirt & Pants
+    sewing_shirt_workshop = models.CharField(max_length=150, blank=True, null=True, verbose_name="ورشة مكن التيشرت")
+    sewing_shirt_expected_date = models.DateField(blank=True, null=True, verbose_name="تاريخ استلام التيشرت")
+    sewing_shirt_status = models.CharField(max_length=50, default="ready", verbose_name="حالة خياطة التيشرت")
+    sewing_shirt_pieces = models.IntegerField(default=0, verbose_name="عدد قطع التيشرت")
+    
+    sewing_pants_workshop = models.CharField(max_length=150, blank=True, null=True, verbose_name="ورشة مكن البنطلون")
+    sewing_pants_expected_date = models.DateField(blank=True, null=True, verbose_name="تاريخ استلام البنطلون")
+    sewing_pants_status = models.CharField(max_length=50, default="ready", verbose_name="حالة خياطة البنطلون")
+    sewing_pants_pieces = models.IntegerField(default=0, verbose_name="عدد قطع البنطلون")
+    
     # Separated Notes for Shirt & Pants
     notes_shirt = models.TextField(blank=True, null=True, verbose_name="ملاحظات تشغيل التيشرت")
     notes_pants = models.TextField(blank=True, null=True, verbose_name="ملاحظات تشغيل البنطلون")
@@ -230,7 +242,13 @@ class PrintDispatch(models.Model):
 
 
 class SewingDispatch(models.Model):
+    PIECE_CHOICES = [
+        ('shirt', 'تيشرت'),
+        ('pants', 'بنطلون'),
+    ]
     model = models.ForeignKey(ModelItem, on_delete=models.CASCADE, related_name="sewing_dispatches")
+    piece_type = models.CharField(max_length=20, choices=PIECE_CHOICES, default='shirt', verbose_name="نوع القطعة")
+    piece_label = models.CharField(max_length=50, blank=True, null=True, verbose_name="مسمى القطعة")
     workshop_name = models.CharField(max_length=200, verbose_name="اسم ورشة المكن / الخياطة")
     pieces_count = models.IntegerField(default=0, verbose_name="القطع المسلمة للورشة")
     dispatched_date = models.DateField(auto_now_add=True, verbose_name="تاريخ الخروج للورشة")
@@ -247,7 +265,8 @@ class SewingDispatch(models.Model):
         return False
 
     def __str__(self):
-        return f"خياطة {self.model.model_code} - ورشة {self.workshop_name}"
+        label = self.piece_label or self.get_piece_type_display()
+        return f"خياطة {self.model.model_code} [{label}] - ورشة {self.workshop_name}"
 
 
 class AppNotification(models.Model):
@@ -276,3 +295,22 @@ class AppNotification(models.Model):
 
     def __str__(self):
         return f"[{self.urgency}] {self.title} - {self.model.model_code}"
+
+
+class InternalMessage(models.Model):
+    """
+    Internal direct messaging system between system users.
+    Controlled by can_send_messages permission.
+    """
+    sender = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name="sent_messages", verbose_name="المرسل")
+    receiver = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name="received_messages", verbose_name="المستلم")
+    content = models.TextField(verbose_name="نص الرسالة")
+    is_read = models.BooleanField(default=False, verbose_name="مقروءة")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاريخ ووقت الإرسال")
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"من {self.sender.real_name} إلى {self.receiver.real_name}: {self.content[:30]}"
+

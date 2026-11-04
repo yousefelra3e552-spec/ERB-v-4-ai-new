@@ -135,7 +135,7 @@ export const DispatchAssemblyView: React.FC = () => {
                   <img
                     src={m.image}
                     alt={m.model_code}
-                    className="w-12 h-12 rounded-xl object-cover border shrink-0"
+                    className="w-12 h-12 rounded-xl object-contain bg-white border shrink-0 p-0.5"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src =
                         'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=100&auto=format&fit=crop&q=60';
@@ -216,7 +216,7 @@ export const DispatchAssemblyView: React.FC = () => {
                           <img
                             src={m.image}
                             alt={m.model_code}
-                            className="w-8 h-8 rounded-lg object-cover border"
+                            className="w-9 h-9 rounded-lg object-contain bg-white border p-0.5"
                             onError={(e) => {
                               (e.target as HTMLImageElement).src =
                                 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=100&auto=format&fit=crop&q=60';

@@ -166,7 +166,7 @@ export const DesignView: React.FC<DesignViewProps> = ({ onOpenModelDetails }) =>
                   <img
                     src={model.image}
                     alt={model.model_code}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-contain bg-white group-hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src =
                         'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&auto=format&fit=crop&q=60';
@@ -291,7 +291,7 @@ export const DesignView: React.FC<DesignViewProps> = ({ onOpenModelDetails }) =>
                     <img
                       src={imagePreview}
                       alt="Preview"
-                      className="w-24 h-24 object-cover mx-auto rounded-xl border"
+                      className="w-24 h-24 object-contain bg-white mx-auto rounded-xl border p-1"
                     />
                   ) : (
                     <div className="flex flex-col items-center">

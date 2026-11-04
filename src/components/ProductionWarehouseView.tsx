@@ -82,7 +82,7 @@ export const ProductionWarehouseView: React.FC = () => {
                         <img
                           src={m.image}
                           alt={m.model_code}
-                          className="w-8 h-8 rounded-lg object-cover border"
+                          className="w-10 h-10 rounded-lg object-contain bg-white border p-0.5 shrink-0"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src =
                               'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=100&auto=format&fit=crop&q=60';
@@ -169,6 +169,7 @@ export const ProductionWarehouseView: React.FC = () => {
               <table className="w-full text-xs text-start border border-slate-200">
                 <thead className="bg-slate-100 text-slate-700 font-black border-b border-slate-200">
                   <tr>
+                    <th className="p-3">صورة الموديل</th>
                     <th className="p-3">كود الموديل</th>
                     <th className="p-3">النوع</th>
                     <th className="p-3 text-center">الكمية المستهدفة</th>
@@ -181,6 +182,17 @@ export const ProductionWarehouseView: React.FC = () => {
                     const actual = m.count_after_sewing || m.count_after_print || m.actual_cut_count || m.target_cut_quantity;
                     return (
                       <tr key={m.id}>
+                        <td className="p-3">
+                          <img
+                            src={m.image}
+                            alt={m.model_code}
+                            className="w-10 h-10 rounded-lg object-contain bg-slate-50 border p-0.5"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src =
+                                'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=100&auto=format&fit=crop&q=60';
+                            }}
+                          />
+                        </td>
                         <td className="p-3 font-bold text-slate-900">{m.model_code}</td>
                         <td className="p-3 text-slate-600">{m.model_type}</td>
                         <td className="p-3 text-center">{m.target_cut_quantity}</td>

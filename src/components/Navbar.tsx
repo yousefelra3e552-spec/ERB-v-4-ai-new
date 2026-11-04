@@ -17,8 +17,10 @@ import {
   AlertCircle,
   Clock,
   Calendar,
-  CheckCircle2
+  CheckCircle2,
+  MessageSquare
 } from 'lucide-react';
+import { InternalMessagingModal } from './InternalMessagingModal';
 
 interface NavbarProps {
   currentTab: string;
@@ -34,10 +36,12 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onLog
     hasPermission, 
     appNotifications, 
     unreadNotificationsCount, 
-    markNotificationRead 
+    markNotificationRead,
+    unreadMessagesCount
   } = useApp();
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [messagesModalOpen, setMessagesModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isSudo = currentUser?.username === 'sudo' || currentUser?.is_sudo;
@@ -195,6 +199,29 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onLog
 
           {/* Notifications & User Profile */}
           <div className="flex items-center gap-2">
+            {/* Internal Messaging Icon Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setMessagesModalOpen(true);
+                setNotificationsOpen(false);
+                setUserDropdownOpen(false);
+              }}
+              className={`relative p-2 rounded-full border transition cursor-pointer ${
+                unreadMessagesCount > 0
+                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700 hover:bg-indigo-100 shadow-xs'
+                  : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200/80'
+              }`}
+              title="المراسلات والمحادثات الداخلية بين المستخدمين"
+            >
+              <MessageSquare className="w-4 h-4" />
+              {unreadMessagesCount > 0 && (
+                <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] px-1 bg-indigo-600 text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs">
+                  {unreadMessagesCount}
+                </span>
+              )}
+            </button>
+
             {/* Bell Icon & Notifications Dropdown */}
             <div className="relative">
               <button
@@ -439,6 +466,12 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onLog
           </div>
         )}
       </div>
+
+      {/* Internal Direct Messaging Modal */}
+      <InternalMessagingModal
+        isOpen={messagesModalOpen}
+        onClose={() => setMessagesModalOpen(false)}
+      />
     </nav>
   );
 };

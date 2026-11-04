@@ -202,7 +202,7 @@ export const ModelDetailsView: React.FC<ModelDetailsViewProps> = ({
           <img
             src={model.image}
             alt={model.model_code}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain bg-white"
             onError={(e) => {
               (e.target as HTMLImageElement).src =
                 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&auto=format&fit=crop&q=60';

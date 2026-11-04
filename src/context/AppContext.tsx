@@ -25,7 +25,8 @@ import {
   AccessoryUsageType,
   ModelTimelineEvent,
   SewingDispatch,
-  AppNotification
+  AppNotification,
+  InternalMessage
 } from '../types';
 
 interface FlashMessage {
@@ -71,6 +72,12 @@ interface AppContextType {
     requireEdit?: boolean
   ) => boolean;
 
+  // Internal Messaging System
+  internalMessages: InternalMessage[];
+  unreadMessagesCount: number;
+  sendInternalMessage: (receiverId: string, content: string) => { success: boolean; message: string };
+  markMessageRead: (messageId: string) => void;
+
   // Financial & Sensitive Permissions Checkers
   canViewFabricPrices: () => boolean;
   canEditFabricPrices: () => boolean;
@@ -79,6 +86,7 @@ interface AppContextType {
   canViewPrintingCosts: () => boolean;
   canEditPrintingCosts: () => boolean;
   canSendWhatsApp: () => boolean;
+  canSendMessages: () => boolean;
 
   // Warehouse Actions
   addFabricOrColor: (data: {
@@ -235,6 +243,8 @@ interface AppContextType {
     workshopName: string;
     piecesCount: number;
     expectedDeliveryDate: string;
+    pieceType?: 'shirt' | 'pants';
+    pieceLabel?: string;
     notes?: string;
   }) => void;
   receiveModelFromSewing: (dispatchId: string, modelId?: string) => void;
@@ -294,7 +304,8 @@ export const INITIAL_ROLES: CustomRole[] = [
       edit_accessory_prices: true,
       view_printing_costs: true,
       edit_printing_costs: true,
-      send_whatsapp_requests: true
+      send_whatsapp_requests: true,
+      send_internal_messages: true
     }
   },
   {
@@ -328,7 +339,8 @@ export const INITIAL_ROLES: CustomRole[] = [
       edit_accessory_prices: true,
       view_printing_costs: false,
       edit_printing_costs: false,
-      send_whatsapp_requests: true
+      send_whatsapp_requests: true,
+      send_internal_messages: true
     }
   },
   {
@@ -362,7 +374,8 @@ export const INITIAL_ROLES: CustomRole[] = [
       edit_accessory_prices: false,
       view_printing_costs: false,
       edit_printing_costs: false,
-      send_whatsapp_requests: true
+      send_whatsapp_requests: true,
+      send_internal_messages: false
     }
   },
   {
@@ -396,7 +409,8 @@ export const INITIAL_ROLES: CustomRole[] = [
       edit_accessory_prices: false,
       view_printing_costs: false,
       edit_printing_costs: false,
-      send_whatsapp_requests: false
+      send_whatsapp_requests: false,
+      send_internal_messages: true
     }
   },
   {
@@ -430,7 +444,8 @@ export const INITIAL_ROLES: CustomRole[] = [
       edit_accessory_prices: false,
       view_printing_costs: false,
       edit_printing_costs: false,
-      send_whatsapp_requests: false
+      send_whatsapp_requests: false,
+      send_internal_messages: false
     }
   },
   {
@@ -464,7 +479,8 @@ export const INITIAL_ROLES: CustomRole[] = [
       edit_accessory_prices: false,
       view_printing_costs: false,
       edit_printing_costs: false,
-      send_whatsapp_requests: false
+      send_whatsapp_requests: false,
+      send_internal_messages: false
     }
   },
   {
@@ -498,7 +514,8 @@ export const INITIAL_ROLES: CustomRole[] = [
       edit_accessory_prices: false,
       view_printing_costs: true,
       edit_printing_costs: true,
-      send_whatsapp_requests: false
+      send_whatsapp_requests: false,
+      send_internal_messages: true
     }
   },
   {
@@ -532,7 +549,8 @@ export const INITIAL_ROLES: CustomRole[] = [
       edit_accessory_prices: false,
       view_printing_costs: false,
       edit_printing_costs: false,
-      send_whatsapp_requests: false
+      send_whatsapp_requests: false,
+      send_internal_messages: true
     }
   }
 ];
@@ -565,7 +583,8 @@ const INITIAL_USERS: User[] = [
       edit_accessory_prices: true,
       view_printing_costs: true,
       edit_printing_costs: true,
-      send_whatsapp_requests: true
+      send_whatsapp_requests: true,
+      send_internal_messages: true
     },
     is_active: true,
     last_active: new Date().toISOString()
@@ -1212,6 +1231,30 @@ const INITIAL_SEWING_DISPATCHES: SewingDispatch[] = [
   }
 ];
 
+const INITIAL_INTERNAL_MESSAGES: InternalMessage[] = [
+  {
+    id: 'msg-1',
+    sender_id: 'user-1',
+    sender_name: 'الإدارة العليا (Sudo)',
+    receiver_id: 'user-2',
+    receiver_name: 'أحمد محمود',
+    content: 'مرحباً أحمد، يرجى متابعة مواعيد استلام الموديلات من ورش الخياطة اليوم.',
+    created_at: '10:30 ص',
+    is_read: true
+  },
+  {
+    id: 'msg-2',
+    sender_id: 'user-2',
+    sender_name: 'أحمد محمود',
+    receiver_id: 'user-1',
+    receiver_name: 'الإدارة العليا (Sudo)',
+    content: 'تم التأكيد مع ورشة النور لخياطة التيشرت، وسيتم تسليم الدفعة الأولى اليوم بالموعد.',
+    created_at: '11:15 ص',
+    is_read: false
+  }
+];
+
+
 const INITIAL_LOGS: AuditLog[] = [
   {
     id: 'log-1',
@@ -1287,6 +1330,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [sewingDispatches, setSewingDispatches] = useState<SewingDispatch[]>(() =>
     loadStored('sewing_dispatches', INITIAL_SEWING_DISPATCHES)
   );
+  const [internalMessages, setInternalMessages] = useState<InternalMessage[]>(() =>
+    loadStored('internal_messages', INITIAL_INTERNAL_MESSAGES)
+  );
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => loadStored('logs', INITIAL_LOGS));
   const [flashMessages, setFlashMessages] = useState<FlashMessage[]>([]);
   const [readNotificationIds, setReadNotificationIds] = useState<string[]>(() => {
@@ -1299,6 +1345,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   // Auto-sync state to localStorage
+  useEffect(() => {
+    localStorage.setItem('factory_erp_internal_messages', JSON.stringify(internalMessages));
+  }, [internalMessages]);
   useEffect(() => {
     localStorage.setItem('factory_erp_roles', JSON.stringify(roles));
   }, [roles]);
@@ -1468,7 +1517,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         edit_accessory_prices: true,
         view_printing_costs: true,
         edit_printing_costs: true,
-        send_whatsapp_requests: true
+        send_whatsapp_requests: true,
+        send_internal_messages: true
       };
     }
 
@@ -1578,6 +1628,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const p = getUserPermissionsObject();
     if (p && p.send_whatsapp_requests !== undefined) return p.send_whatsapp_requests;
     return Boolean(currentUser.permissions?.send_whatsapp_requests);
+  };
+
+  const canSendMessages = (): boolean => {
+    if (!currentUser) return false;
+    if (currentUser.username === 'sudo' || currentUser.is_sudo) return true;
+    const p = getUserPermissionsObject();
+    if (p && p.send_internal_messages !== undefined) return p.send_internal_messages;
+    return Boolean(currentUser.permissions?.send_internal_messages);
+  };
+
+  const unreadMessagesCount = useMemo(() => {
+    if (!currentUser) return 0;
+    return internalMessages.filter(
+      (m) => (m.receiver_id === currentUser.id || m.receiver_id === currentUser.username) && !m.is_read
+    ).length;
+  }, [internalMessages, currentUser]);
+
+  const sendInternalMessage = (receiverId: string, content: string): { success: boolean; message: string } => {
+    if (!canSendMessages()) {
+      addFlashMessage('ليس لديك صلاحية إرسال الرسائل والمراسلات الداخلية. يرجى مراجعة إدارة Sudo.', 'danger');
+      return { success: false, message: 'ليس لديك صلاحية إرسال الرسائل الداخلية' };
+    }
+    if (!content.trim()) {
+      return { success: false, message: 'لا يمكن إرسال رسالة فارغة' };
+    }
+    const receiver = users.find((u) => u.id === receiverId || u.username === receiverId);
+    if (!receiver) {
+      return { success: false, message: 'المستلم المحدد غير موجود' };
+    }
+
+    const newMsg: InternalMessage = {
+      id: 'msg-' + Date.now(),
+      sender_id: currentUser?.id || 'user-1',
+      sender_name: currentUser?.real_name || 'الإدارة العليا (Sudo)',
+      receiver_id: receiver.id,
+      receiver_name: receiver.real_name,
+      content: content.trim(),
+      created_at: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+      is_read: false
+    };
+
+    setInternalMessages((prev) => [...prev, newMsg]);
+    logAction('المراسلات الداخلية', `إرسال رسالة من ${currentUser?.real_name} إلى ${receiver.real_name}`);
+    addFlashMessage(`تم إرسال الرسالة إلى ${receiver.real_name} بنجاح`, 'success');
+    return { success: true, message: 'تم إرسال الرسالة بنجاح' };
+  };
+
+  const markMessageRead = (messageId: string) => {
+    setInternalMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, is_read: true } : m))
+    );
   };
 
   // Warehouse Actions
@@ -2556,18 +2657,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addFlashMessage(`تم تحديث حالة التشغيل إلى "${status}" بنجاح`);
   };
 
-  // Sewing Section Actions - Matching Printing Dispatch Pattern
+  // Sewing Section Actions - Matching Printing Dispatch Pattern with Independent Shirt & Pants Tracking
   const dispatchModelToSewing = (data: {
     modelId: string;
     workshopName: string;
     piecesCount: number;
     expectedDeliveryDate: string;
+    pieceType?: 'shirt' | 'pants';
+    pieceLabel?: string;
     notes?: string;
   }) => {
     const targetModel = models.find((m) => m.id === data.modelId);
+    const resolvedType = data.pieceType || 'shirt';
+    const resolvedLabel = data.pieceLabel || (resolvedType === 'shirt' ? 'تيشرت' : 'بنطلون');
+
     const newDisp: SewingDispatch = {
       id: 'sew-disp-' + Date.now(),
       model_id: data.modelId,
+      piece_type: resolvedType,
+      piece_label: resolvedLabel,
       workshop_name: data.workshopName.trim(),
       pieces_count: Math.max(0, data.piecesCount),
       dispatched_at: new Date().toLocaleString('ar-EG', { hour12: false }),
@@ -2580,25 +2688,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setModels((prev) =>
       prev.map((m) => {
         if (m.id !== data.modelId) return m;
-        return {
-          ...m,
+        const updates: Partial<DesignModel> = {
           status: 'في قسم المكن',
           sewing_workshop: data.workshopName.trim(),
           sewing_expected_date: data.expectedDeliveryDate,
           sewing_pieces_count: data.piecesCount
+        };
+        if (resolvedType === 'shirt') {
+          updates.sewing_shirt_workshop = data.workshopName.trim();
+          updates.sewing_shirt_expected_date = data.expectedDeliveryDate;
+          updates.sewing_shirt_status = 'في ورشة المكن';
+          updates.sewing_shirt_pieces = data.piecesCount;
+        } else {
+          updates.sewing_pants_workshop = data.workshopName.trim();
+          updates.sewing_pants_expected_date = data.expectedDeliveryDate;
+          updates.sewing_pants_status = 'في ورشة المكن';
+          updates.sewing_pants_pieces = data.piecesCount;
+        }
+        return {
+          ...m,
+          ...updates
         };
       })
     );
 
     addModelTimelineEvent(data.modelId, {
       stage: 'قسم المكن والخياطة',
-      title: `إرسال إلى ورشة المكن: ${data.workshopName}`,
-      description: `تم إرسال ${data.piecesCount} قطعة للخياطة، تاريخ الاستلام المتوقع: ${data.expectedDeliveryDate}${data.notes ? ` - ${data.notes}` : ''}`,
+      title: `إرسال [${resolvedLabel}] إلى ورشة المكن: ${data.workshopName}`,
+      description: `تم إرسال ${data.piecesCount} قطعة [${resolvedLabel}] للخياطة إلى ورشة (${data.workshopName})، تاريخ الاستلام المتوقع: ${data.expectedDeliveryDate}${data.notes ? ` - ${data.notes}` : ''}`,
       user_name: currentUser?.real_name || 'مسؤول خطوط الخياطة'
     });
 
-    logAction('قسم المكن', `إرسال ${data.piecesCount} قطعة من موديل ${targetModel?.model_code} إلى ورشة ${data.workshopName}`);
-    addFlashMessage(`تم تسجيل خروج الموديل لورشة الخياطة (${data.workshopName}) بنجاح`);
+    logAction('قسم المكن', `إرسال ${data.piecesCount} قطعة [${resolvedLabel}] من موديل ${targetModel?.model_code} إلى ورشة ${data.workshopName}`);
+    addFlashMessage(`تم تسجيل خروج [${resolvedLabel}] لورشة الخياطة (${data.workshopName}) بنجاح`);
   };
 
   const receiveModelFromSewing = (dispatchId: string, modelId?: string) => {
@@ -2606,38 +2728,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const targetModelId = modelId || disp?.model_id;
     if (!targetModelId) return;
     const targetModel = models.find((m) => m.id === targetModelId);
+    const pieceType = disp?.piece_type || 'shirt';
+    const pieceLabel = disp?.piece_label || (pieceType === 'shirt' ? 'تيشرت' : 'بنطلون');
 
-    setSewingDispatches((prev) =>
-      prev.map((d) => {
-        if (d.id !== dispatchId) return d;
-        return {
-          ...d,
-          status: 'تم الاستلام',
-          received_at: new Date().toLocaleString('ar-EG', { hour12: false })
-        };
-      })
+    const updatedDispatches = sewingDispatches.map((d) => {
+      if (d.id !== dispatchId) return d;
+      return {
+        ...d,
+        status: 'تم الاستلام' as const,
+        received_at: new Date().toLocaleString('ar-EG', { hour12: false })
+      };
+    });
+    setSewingDispatches(updatedDispatches);
+
+    // Check if other active dispatches exist for this model
+    const otherPending = updatedDispatches.filter(
+      (d) => d.model_id === targetModelId && d.id !== dispatchId && d.status !== 'تم الاستلام'
     );
+    const allPiecesReceived = otherPending.length === 0;
 
-    // Automatically route to 'العد بعد المكن' in QC!
     setModels((prev) =>
       prev.map((m) => {
         if (m.id !== targetModelId) return m;
+        const updates: Partial<DesignModel> = {};
+        if (pieceType === 'shirt') {
+          updates.sewing_shirt_status = 'تم الاستلام';
+        } else {
+          updates.sewing_pants_status = 'تم الاستلام';
+        }
+        if (allPiecesReceived) {
+          updates.status = 'العد بعد المكن';
+        }
         return {
           ...m,
-          status: 'العد بعد المكن'
+          ...updates
         };
       })
     );
 
     addModelTimelineEvent(targetModelId, {
       stage: 'قسم المكن والفرز',
-      title: 'استلام الموديل من ورشة المكن',
-      description: `تم استلام الموديل من ورشة ${disp?.workshop_name || ''} وتوجيهه تلقائياً إلى الفرز والجودة (العد بعد المكن)`,
+      title: `استلام [${pieceLabel}] من ورشة المكن`,
+      description: `تم استلام [${pieceLabel}] من ورشة ${disp?.workshop_name || ''}${allPiecesReceived ? ' واكتمال القطع وتوجيه الموديل تلقائياً إلى الفرز والجودة (العد بعد المكن)' : ''}`,
       user_name: currentUser?.real_name || 'مسؤول الإنتاج'
     });
 
-    logAction('قسم المكن', `استلام موديل ${targetModel?.model_code} من ورشة ${disp?.workshop_name} وتوجيهه للعد بعد المكن`);
-    addFlashMessage('تم تسجيل استلام الموديل من ورشة المكن وتوجيهه تلقائياً إلى العد بعد المكن بالفرز والجودة');
+    logAction('قسم المكن', `استلام [${pieceLabel}] موديل ${targetModel?.model_code} من ورشة ${disp?.workshop_name}`);
+    addFlashMessage(`تم استلام [${pieceLabel}] بنجاح${allPiecesReceived ? ' واكتمال القطع ونقل الموديل إلى العد بعد المكن بالفرز' : ''}`);
   };
 
   const finishSewingToQC = (modelId: string, notes?: string) => {
@@ -2840,6 +2977,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (disp.status === 'تم الاستلام' || !disp.expected_delivery_date) return;
       const model = models.find((m) => m.id === disp.model_id);
       const modelCode = model?.model_code || 'موديل';
+      const pieceLabel = disp.piece_label ? ` [${disp.piece_label}]` : '';
 
       const expDate = new Date(disp.expected_delivery_date);
       expDate.setHours(0, 0, 0, 0);
@@ -2857,8 +2995,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           expected_date: disp.expected_delivery_date,
           urgency: 'overdue',
           days_diff: diffDays,
-          title: `🚨 تأخر استلام من ورشة المكن (${modelCode})`,
-          message: `تخطى موعد استلام الموديل ${modelCode} من ورشة ${disp.workshop_name} بمقدار ${Math.abs(diffDays)} يوم، ولم يتم تسجيل الاستلام بعد!`,
+          title: `🚨 تأخر استلام من ورشة المكن${pieceLabel} (${modelCode})`,
+          message: `تخطى موعد استلام ${modelCode}${pieceLabel} من ورشة ${disp.workshop_name} بمقدار ${Math.abs(diffDays)} يوم، ولم يتم تسجيل الاستلام بعد!`,
           is_read: readNotificationIds.includes(notifId),
           created_at: disp.dispatched_at
         });
@@ -2872,8 +3010,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           expected_date: disp.expected_delivery_date,
           urgency: 'today',
           days_diff: 0,
-          title: `⏰ موعد استلام اليوم (${modelCode})`,
-          message: `اليوم موعد استلام الموديل ${modelCode} من ورشة المكن (${disp.workshop_name}).`,
+          title: `⏰ موعد استلام اليوم${pieceLabel} (${modelCode})`,
+          message: `اليوم موعد استلام الموديل ${modelCode}${pieceLabel} من ورشة المكن (${disp.workshop_name}).`,
           is_read: readNotificationIds.includes(notifId),
           created_at: disp.dispatched_at
         });
@@ -2887,8 +3025,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           expected_date: disp.expected_delivery_date,
           urgency: 'tomorrow',
           days_diff: 1,
-          title: `📅 موعد استلام غداً (${modelCode})`,
-          message: `غداً موعد استلام الموديل ${modelCode} من ورشة المكن (${disp.workshop_name}).`,
+          title: `📅 موعد استلام غداً${pieceLabel} (${modelCode})`,
+          message: `غداً موعد استلام الموديل ${modelCode}${pieceLabel} من ورشة المكن (${disp.workshop_name}).`,
           is_read: readNotificationIds.includes(notifId),
           created_at: disp.dispatched_at
         });
@@ -2942,6 +3080,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         canViewPrintingCosts,
         canEditPrintingCosts,
         canSendWhatsApp,
+        canSendMessages,
+        internalMessages,
+        unreadMessagesCount,
+        sendInternalMessage,
+        markMessageRead,
         addFabricOrColor,
         recordTransaction,
         exportWarehouseInventoryCsv,
