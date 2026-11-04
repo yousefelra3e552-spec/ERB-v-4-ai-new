@@ -18,7 +18,10 @@ import {
   Sparkles,
   Shirt,
   PackageCheck,
-  GitCommit
+  GitCommit,
+  AlertCircle,
+  Bell,
+  Truck
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -33,6 +36,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
     cuttingRecords,
     qcRecords,
     printDispatches,
+    appNotifications,
     exportWarehouseInventoryCsv,
     hasPermission
   } = useApp();
@@ -137,6 +141,82 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           </button>
         </div>
       </div>
+
+      {/* Smart In-App Delivery Notifications Banner */}
+      {appNotifications.length > 0 && (
+        <div className="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-xs overflow-hidden">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-rose-100 text-rose-700 rounded-xl">
+                <Bell className="w-5 h-5 animate-bounce" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-sm text-slate-900">
+                  تنبيهات مواعيد الاستلام الذكية (المطابع وورش المكن)
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  متابعة المواعيد المستهدفة، التنبيه المسبق قبل الموعد بيوم، وتنبيهات المتأخرات حتى تسجيل الاستلام الفعلي
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => onNavigate('production_control')}
+              className="text-xs font-bold text-indigo-700 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+            >
+              <span>فتح سجل التشغيلات &larr;</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {appNotifications.map((notif) => {
+              const isOverdue = notif.urgency === 'overdue';
+              const isToday = notif.urgency === 'today';
+
+              return (
+                <div
+                  key={notif.id}
+                  onClick={() => onNavigate('production_control')}
+                  className={`p-3.5 rounded-2xl border transition cursor-pointer flex flex-col justify-between gap-2 ${
+                    isOverdue
+                      ? 'bg-rose-50/70 border-rose-300 text-rose-950 hover:bg-rose-100/70'
+                      : isToday
+                      ? 'bg-amber-50/70 border-amber-300 text-amber-950 hover:bg-amber-100/70'
+                      : 'bg-blue-50/50 border-blue-200 text-blue-950 hover:bg-blue-100/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-black text-[10px] ${
+                        isOverdue
+                          ? 'bg-rose-600 text-white animate-pulse'
+                          : isToday
+                          ? 'bg-amber-500 text-slate-900'
+                          : 'bg-blue-600 text-white'
+                      }`}
+                    >
+                      {isOverdue && <AlertCircle className="w-3 h-3" />}
+                      {isToday && <Clock className="w-3 h-3" />}
+                      <span>{notif.title}</span>
+                    </span>
+                    <span className="font-mono text-xs font-black text-slate-900">
+                      موديل {notif.model_code}
+                    </span>
+                  </div>
+
+                  <p className="text-xs font-bold text-slate-800 leading-snug">
+                    {notif.message}
+                  </p>
+
+                  <div className="pt-2 border-t border-black/5 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                    <span>{notif.source_name}</span>
+                    <span className="font-mono font-bold text-slate-700">تاريخ: {notif.expected_date}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Primary 3 Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

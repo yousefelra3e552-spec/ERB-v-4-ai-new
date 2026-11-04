@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import {
   User,
   AuditLog,
@@ -23,7 +23,9 @@ import {
   AccessoryTransaction,
   AccessoryUnit,
   AccessoryUsageType,
-  ModelTimelineEvent
+  ModelTimelineEvent,
+  SewingDispatch,
+  AppNotification
 } from '../types';
 
 interface FlashMessage {
@@ -50,6 +52,10 @@ interface AppContextType {
   cuttingRecords: CuttingRecord[];
   qcRecords: QCRecord[];
   printDispatches: PrintDispatch[];
+  sewingDispatches: SewingDispatch[];
+  appNotifications: AppNotification[];
+  unreadNotificationsCount: number;
+  markNotificationRead: (id: string) => void;
   flashMessages: FlashMessage[];
   addFlashMessage: (text: string, type?: 'success' | 'danger' | 'warning' | 'info') => void;
   removeFlashMessage: (id: string) => void;
@@ -216,6 +222,7 @@ interface AppContextType {
     shopName: string;
     piecesCount: number;
     printType: string;
+    expectedDeliveryDate?: string;
     costPerPiece?: number;
     totalCost?: number;
     notes?: string;
@@ -223,6 +230,14 @@ interface AppContextType {
   updateDispatchStatus: (dispatchId: string, status: DispatchStatus) => void;
 
   // Sewing Actions
+  dispatchModelToSewing: (data: {
+    modelId: string;
+    workshopName: string;
+    piecesCount: number;
+    expectedDeliveryDate: string;
+    notes?: string;
+  }) => void;
+  receiveModelFromSewing: (dispatchId: string, modelId?: string) => void;
   finishSewingToQC: (modelId: string, notes?: string) => void;
   finishQCToProduction: (modelId: string, notes?: string) => void;
 
@@ -1160,6 +1175,7 @@ const INITIAL_PRINT_DISPATCHES: PrintDispatch[] = [
     model_id: 'mod-4',
     shop_name: 'مطبعة النجوم الحديثة',
     dispatched_at: '2026-10-22 10:00',
+    expected_delivery_date: '2026-10-24',
     pieces_count: 450,
     print_type: 'سلك سكرين مائي 4 لون',
     cost_per_piece: 4.5,
@@ -1167,6 +1183,32 @@ const INITIAL_PRINT_DISPATCHES: PrintDispatch[] = [
     notes: 'تسليم سريع مع تجفيف حراري كامل',
     status: 'تم الاستلام بالمصنع',
     received_at: '2026-10-24 16:30'
+  },
+  {
+    id: 'disp-2',
+    model_id: 'mod-3',
+    shop_name: 'مطبعة الأهرام الذهبية',
+    dispatched_at: '2026-10-26 11:00',
+    expected_delivery_date: new Date().toISOString().slice(0, 10),
+    pieces_count: 395,
+    print_type: 'تطريز ديجيتال كمبيوتر',
+    cost_per_piece: 6.0,
+    total_cost: 2370,
+    notes: 'تطريز لوجو الصدر والظهر',
+    status: 'مرسل للمطبعة'
+  }
+];
+
+const INITIAL_SEWING_DISPATCHES: SewingDispatch[] = [
+  {
+    id: 'sew-disp-1',
+    model_id: 'mod-4',
+    workshop_name: 'ورشة الأمل للخياطة',
+    pieces_count: 442,
+    dispatched_at: '2026-10-25 15:00',
+    expected_delivery_date: new Date(Date.now() - 86400000 * 2).toISOString().slice(0, 10),
+    status: 'في ورشة المكن',
+    notes: 'تشغيل أوفر وسنجر وتجميع التيشرت والبنطلون'
   }
 ];
 
@@ -1242,8 +1284,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [printDispatches, setPrintDispatches] = useState<PrintDispatch[]>(() =>
     loadStored('print_dispatches', INITIAL_PRINT_DISPATCHES)
   );
+  const [sewingDispatches, setSewingDispatches] = useState<SewingDispatch[]>(() =>
+    loadStored('sewing_dispatches', INITIAL_SEWING_DISPATCHES)
+  );
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => loadStored('logs', INITIAL_LOGS));
   const [flashMessages, setFlashMessages] = useState<FlashMessage[]>([]);
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('erp_read_notifications');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // Auto-sync state to localStorage
   useEffect(() => {
@@ -1297,6 +1350,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('factory_erp_print_dispatches', JSON.stringify(printDispatches));
   }, [printDispatches]);
+  useEffect(() => {
+    localStorage.setItem('factory_erp_sewing_dispatches', JSON.stringify(sewingDispatches));
+  }, [sewingDispatches]);
   useEffect(() => {
     localStorage.setItem('factory_erp_logs', JSON.stringify(auditLogs));
   }, [auditLogs]);
@@ -2417,6 +2473,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     shopName: string;
     piecesCount: number;
     printType: string;
+    expectedDeliveryDate?: string;
     costPerPiece?: number;
     totalCost?: number;
     notes?: string;
@@ -2427,6 +2484,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       model_id: data.modelId,
       shop_name: data.shopName.trim(),
       dispatched_at: new Date().toLocaleString('ar-EG', { hour12: false }),
+      expected_delivery_date: data.expectedDeliveryDate,
       pieces_count: Math.max(0, data.piecesCount),
       print_type: data.printType.trim(),
       cost_per_piece: data.costPerPiece,
@@ -2444,7 +2502,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ...m,
           status: 'مرسل للمطبعة',
           print_house_name: data.shopName.trim(),
-          print_cost: data.costPerPiece
+          print_house: data.shopName.trim(),
+          print_cost: data.costPerPiece,
+          print_expected_date: data.expectedDeliveryDate
         };
       })
     );
@@ -2452,7 +2512,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addModelTimelineEvent(data.modelId, {
       stage: 'المطابع والتطريز',
       title: `إرسال للمطبعة: ${data.shopName}`,
-      description: `تم إرسال ${data.piecesCount} قطعة للتشغيل (${data.printType})`,
+      description: `تم إرسال ${data.piecesCount} قطعة للتشغيل (${data.printType})${data.expectedDeliveryDate ? ` - موعد الاستلام المتوقع: ${data.expectedDeliveryDate}` : ''}`,
       user_name: currentUser?.real_name || 'مسؤول المطابع'
     });
 
@@ -2496,7 +2556,90 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addFlashMessage(`تم تحديث حالة التشغيل إلى "${status}" بنجاح`);
   };
 
-  // Sewing Section Actions
+  // Sewing Section Actions - Matching Printing Dispatch Pattern
+  const dispatchModelToSewing = (data: {
+    modelId: string;
+    workshopName: string;
+    piecesCount: number;
+    expectedDeliveryDate: string;
+    notes?: string;
+  }) => {
+    const targetModel = models.find((m) => m.id === data.modelId);
+    const newDisp: SewingDispatch = {
+      id: 'sew-disp-' + Date.now(),
+      model_id: data.modelId,
+      workshop_name: data.workshopName.trim(),
+      pieces_count: Math.max(0, data.piecesCount),
+      dispatched_at: new Date().toLocaleString('ar-EG', { hour12: false }),
+      expected_delivery_date: data.expectedDeliveryDate,
+      status: 'في ورشة المكن',
+      notes: data.notes?.trim() || ''
+    };
+    setSewingDispatches((prev) => [newDisp, ...prev]);
+
+    setModels((prev) =>
+      prev.map((m) => {
+        if (m.id !== data.modelId) return m;
+        return {
+          ...m,
+          status: 'في قسم المكن',
+          sewing_workshop: data.workshopName.trim(),
+          sewing_expected_date: data.expectedDeliveryDate,
+          sewing_pieces_count: data.piecesCount
+        };
+      })
+    );
+
+    addModelTimelineEvent(data.modelId, {
+      stage: 'قسم المكن والخياطة',
+      title: `إرسال إلى ورشة المكن: ${data.workshopName}`,
+      description: `تم إرسال ${data.piecesCount} قطعة للخياطة، تاريخ الاستلام المتوقع: ${data.expectedDeliveryDate}${data.notes ? ` - ${data.notes}` : ''}`,
+      user_name: currentUser?.real_name || 'مسؤول خطوط الخياطة'
+    });
+
+    logAction('قسم المكن', `إرسال ${data.piecesCount} قطعة من موديل ${targetModel?.model_code} إلى ورشة ${data.workshopName}`);
+    addFlashMessage(`تم تسجيل خروج الموديل لورشة الخياطة (${data.workshopName}) بنجاح`);
+  };
+
+  const receiveModelFromSewing = (dispatchId: string, modelId?: string) => {
+    const disp = sewingDispatches.find((d) => d.id === dispatchId);
+    const targetModelId = modelId || disp?.model_id;
+    if (!targetModelId) return;
+    const targetModel = models.find((m) => m.id === targetModelId);
+
+    setSewingDispatches((prev) =>
+      prev.map((d) => {
+        if (d.id !== dispatchId) return d;
+        return {
+          ...d,
+          status: 'تم الاستلام',
+          received_at: new Date().toLocaleString('ar-EG', { hour12: false })
+        };
+      })
+    );
+
+    // Automatically route to 'العد بعد المكن' in QC!
+    setModels((prev) =>
+      prev.map((m) => {
+        if (m.id !== targetModelId) return m;
+        return {
+          ...m,
+          status: 'العد بعد المكن'
+        };
+      })
+    );
+
+    addModelTimelineEvent(targetModelId, {
+      stage: 'قسم المكن والفرز',
+      title: 'استلام الموديل من ورشة المكن',
+      description: `تم استلام الموديل من ورشة ${disp?.workshop_name || ''} وتوجيهه تلقائياً إلى الفرز والجودة (العد بعد المكن)`,
+      user_name: currentUser?.real_name || 'مسؤول الإنتاج'
+    });
+
+    logAction('قسم المكن', `استلام موديل ${targetModel?.model_code} من ورشة ${disp?.workshop_name} وتوجيهه للعد بعد المكن`);
+    addFlashMessage('تم تسجيل استلام الموديل من ورشة المكن وتوجيهه تلقائياً إلى العد بعد المكن بالفرز والجودة');
+  };
+
   const finishSewingToQC = (modelId: string, notes?: string) => {
     const targetModel = models.find((m) => m.id === modelId);
     setModels((prev) =>
@@ -2616,6 +2759,151 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true, message: 'تم الحذف بنجاح' };
   };
 
+  const markNotificationRead = (id: string) => {
+    setReadNotificationIds((prev) => {
+      const updated = prev.includes(id) ? prev : [...prev, id];
+      try {
+        localStorage.setItem('erp_read_notifications', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  // Smart Real-time In-App Notifications for Expected Delivery Dates
+  const appNotifications = useMemo<AppNotification[]>(() => {
+    const list: AppNotification[] = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // 1. Check Print Dispatches
+    printDispatches.forEach((disp) => {
+      if (disp.status === 'تم الاستلام بالمصنع' || !disp.expected_delivery_date) return;
+      const model = models.find((m) => m.id === disp.model_id);
+      const modelCode = model?.model_code || 'موديل';
+
+      const expDate = new Date(disp.expected_delivery_date);
+      expDate.setHours(0, 0, 0, 0);
+      const diffDays = Math.round((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+      const notifId = `notif-print-${disp.id}-${disp.expected_delivery_date}`;
+
+      if (diffDays < 0) {
+        list.push({
+          id: notifId,
+          model_id: disp.model_id,
+          model_code: modelCode,
+          stage: 'printing',
+          source_name: disp.shop_name,
+          expected_date: disp.expected_delivery_date,
+          urgency: 'overdue',
+          days_diff: diffDays,
+          title: `🚨 تأخر استلام من المطبعة (${modelCode})`,
+          message: `تخطى موعد استلام الموديل ${modelCode} من مطبعة ${disp.shop_name} بمقدار ${Math.abs(diffDays)} يوم، ولم يتم تسجيل الاستلام بعد!`,
+          is_read: readNotificationIds.includes(notifId),
+          created_at: disp.dispatched_at
+        });
+      } else if (diffDays === 0) {
+        list.push({
+          id: notifId,
+          model_id: disp.model_id,
+          model_code: modelCode,
+          stage: 'printing',
+          source_name: disp.shop_name,
+          expected_date: disp.expected_delivery_date,
+          urgency: 'today',
+          days_diff: 0,
+          title: `⏰ موعد استلام اليوم (${modelCode})`,
+          message: `اليوم موعد استلام الموديل ${modelCode} من مطبعة ${disp.shop_name}.`,
+          is_read: readNotificationIds.includes(notifId),
+          created_at: disp.dispatched_at
+        });
+      } else if (diffDays === 1) {
+        list.push({
+          id: notifId,
+          model_id: disp.model_id,
+          model_code: modelCode,
+          stage: 'printing',
+          source_name: disp.shop_name,
+          expected_date: disp.expected_delivery_date,
+          urgency: 'tomorrow',
+          days_diff: 1,
+          title: `📅 موعد استلام غداً (${modelCode})`,
+          message: `غداً موعد استلام الموديل ${modelCode} من مطبعة ${disp.shop_name}.`,
+          is_read: readNotificationIds.includes(notifId),
+          created_at: disp.dispatched_at
+        });
+      }
+    });
+
+    // 2. Check Sewing Dispatches
+    sewingDispatches.forEach((disp) => {
+      if (disp.status === 'تم الاستلام' || !disp.expected_delivery_date) return;
+      const model = models.find((m) => m.id === disp.model_id);
+      const modelCode = model?.model_code || 'موديل';
+
+      const expDate = new Date(disp.expected_delivery_date);
+      expDate.setHours(0, 0, 0, 0);
+      const diffDays = Math.round((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+      const notifId = `notif-sew-${disp.id}-${disp.expected_delivery_date}`;
+
+      if (diffDays < 0) {
+        list.push({
+          id: notifId,
+          model_id: disp.model_id,
+          model_code: modelCode,
+          stage: 'sewing',
+          source_name: disp.workshop_name,
+          expected_date: disp.expected_delivery_date,
+          urgency: 'overdue',
+          days_diff: diffDays,
+          title: `🚨 تأخر استلام من ورشة المكن (${modelCode})`,
+          message: `تخطى موعد استلام الموديل ${modelCode} من ورشة ${disp.workshop_name} بمقدار ${Math.abs(diffDays)} يوم، ولم يتم تسجيل الاستلام بعد!`,
+          is_read: readNotificationIds.includes(notifId),
+          created_at: disp.dispatched_at
+        });
+      } else if (diffDays === 0) {
+        list.push({
+          id: notifId,
+          model_id: disp.model_id,
+          model_code: modelCode,
+          stage: 'sewing',
+          source_name: disp.workshop_name,
+          expected_date: disp.expected_delivery_date,
+          urgency: 'today',
+          days_diff: 0,
+          title: `⏰ موعد استلام اليوم (${modelCode})`,
+          message: `اليوم موعد استلام الموديل ${modelCode} من ورشة المكن (${disp.workshop_name}).`,
+          is_read: readNotificationIds.includes(notifId),
+          created_at: disp.dispatched_at
+        });
+      } else if (diffDays === 1) {
+        list.push({
+          id: notifId,
+          model_id: disp.model_id,
+          model_code: modelCode,
+          stage: 'sewing',
+          source_name: disp.workshop_name,
+          expected_date: disp.expected_delivery_date,
+          urgency: 'tomorrow',
+          days_diff: 1,
+          title: `📅 موعد استلام غداً (${modelCode})`,
+          message: `غداً موعد استلام الموديل ${modelCode} من ورشة المكن (${disp.workshop_name}).`,
+          is_read: readNotificationIds.includes(notifId),
+          created_at: disp.dispatched_at
+        });
+      }
+    });
+
+    const priorityOrder = { overdue: 0, today: 1, tomorrow: 2 };
+    return list.sort((a, b) => priorityOrder[a.urgency] - priorityOrder[b.urgency]);
+  }, [printDispatches, sewingDispatches, models, readNotificationIds]);
+
+  const unreadNotificationsCount = useMemo(() => {
+    // Overdue notifications stay persistent and visible until actual receipt!
+    return appNotifications.filter((n) => n.urgency === 'overdue' || !n.is_read).length;
+  }, [appNotifications]);
+
   return (
     <AppContext.Provider
       value={{
@@ -2636,6 +2924,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         cuttingRecords,
         qcRecords,
         printDispatches,
+        sewingDispatches,
+        appNotifications,
+        unreadNotificationsCount,
+        markNotificationRead,
         flashMessages,
         addFlashMessage,
         removeFlashMessage,
@@ -2683,6 +2975,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         exportQcCsv,
         addPrintDispatch,
         updateDispatchStatus,
+        dispatchModelToSewing,
+        receiveModelFromSewing,
         finishSewingToQC,
         finishQCToProduction,
         addSizeDef,

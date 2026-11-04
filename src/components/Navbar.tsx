@@ -12,7 +12,12 @@ import {
   UserCheck,
   ChevronDown,
   Menu,
-  X
+  X,
+  Bell,
+  AlertCircle,
+  Clock,
+  Calendar,
+  CheckCircle2
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -22,8 +27,17 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onLogout }) => {
-  const { currentUser, users, setCurrentUser, hasPermission } = useApp();
+  const { 
+    currentUser, 
+    users, 
+    setCurrentUser, 
+    hasPermission, 
+    appNotifications, 
+    unreadNotificationsCount, 
+    markNotificationRead 
+  } = useApp();
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isSudo = currentUser?.username === 'sudo' || currentUser?.is_sudo;
@@ -179,12 +193,143 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onLog
             })}
           </div>
 
-          {/* User Profile & Quick Switcher */}
+          {/* Notifications & User Profile */}
           <div className="flex items-center gap-2">
+            {/* Bell Icon & Notifications Dropdown */}
             <div className="relative">
               <button
-                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                className="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200/80 border border-slate-200 transition text-xs text-slate-800 font-semibold"
+                type="button"
+                onClick={() => {
+                  setNotificationsOpen(!notificationsOpen);
+                  setUserDropdownOpen(false);
+                }}
+                className={`relative p-2 rounded-full border transition cursor-pointer ${
+                  unreadNotificationsCount > 0
+                    ? 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
+                    : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200/80'
+                }`}
+                title="تنبيهات وإشعارات مواعيد الاستلام (المطابع وورش المكن)"
+              >
+                <Bell className="w-4 h-4" />
+                {unreadNotificationsCount > 0 && (
+                  <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] px-1 bg-rose-600 text-white rounded-full text-[10px] font-black flex items-center justify-center animate-pulse shadow-xs">
+                    {unreadNotificationsCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Notifications Dropdown Window */}
+              {notificationsOpen && (
+                <div className="absolute start-0 sm:start-auto sm:end-0 mt-2 w-80 sm:w-96 bg-white rounded-3xl shadow-2xl border border-slate-200 py-3 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-4 pb-2 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Bell className="w-4 h-4 text-rose-600" />
+                      <h4 className="font-black text-xs text-slate-900">
+                        إشعارات مواعيد الاستلام والمتابعة
+                      </h4>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                      {appNotifications.length} إشعار
+                    </span>
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 p-2 space-y-1">
+                    {appNotifications.length > 0 ? (
+                      appNotifications.map((notif) => {
+                        const isOverdue = notif.urgency === 'overdue';
+                        const isToday = notif.urgency === 'today';
+
+                        return (
+                          <div
+                            key={notif.id}
+                            onClick={() => {
+                              markNotificationRead(notif.id);
+                              setCurrentTab('production_control');
+                              setNotificationsOpen(false);
+                            }}
+                            className={`p-3 rounded-2xl transition cursor-pointer text-xs flex flex-col gap-1 border ${
+                              isOverdue
+                                ? 'bg-rose-50/80 border-rose-300 text-rose-950 hover:bg-rose-100'
+                                : isToday
+                                ? 'bg-amber-50/80 border-amber-300 text-amber-950 hover:bg-amber-100'
+                                : 'bg-blue-50/60 border-blue-200 text-blue-950 hover:bg-blue-100'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-1">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-black text-[10px] ${
+                                  isOverdue
+                                    ? 'bg-rose-600 text-white animate-pulse'
+                                    : isToday
+                                    ? 'bg-amber-500 text-slate-900'
+                                    : 'bg-blue-600 text-white'
+                                }`}
+                              >
+                                {isOverdue && <AlertCircle className="w-3 h-3" />}
+                                {isToday && <Clock className="w-3 h-3" />}
+                                {!isOverdue && !isToday && <Calendar className="w-3 h-3" />}
+                                <span>{notif.title}</span>
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                موديل {notif.model_code}
+                              </span>
+                            </div>
+
+                            <p className="font-bold text-slate-800 text-[11px] leading-relaxed">
+                              {notif.message}
+                            </p>
+
+                            <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
+                              <span>الموقع: {notif.source_name}</span>
+                              <span className="font-mono font-bold">تاريخ الاستلام: {notif.expected_date}</span>
+                            </div>
+
+                            {isOverdue && (
+                              <p className="text-[10px] text-rose-700 font-extrabold bg-rose-100/80 px-2 py-0.5 rounded-lg mt-0.5">
+                                ⚠️ تنبيه متأخر: يظل هذا التنبيه نشطاً حتى تسجيل الاستلام بالفرز والكنترول.
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="py-8 text-center text-slate-400">
+                        <CheckCircle2 className="w-8 h-8 mx-auto mb-1 text-emerald-500" />
+                        <p className="font-bold text-xs text-slate-700">لا توجد تنبيهات متأخرة أو عاجلة حالياً</p>
+                        <p className="text-[10px] text-slate-400">جميع تسليمات المطابع وورش المكن منتظمة</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="px-4 pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <button
+                      onClick={() => {
+                        setCurrentTab('production_control');
+                        setNotificationsOpen(false);
+                      }}
+                      className="text-[11px] font-bold text-indigo-700 hover:underline"
+                    >
+                      فتح شاشة متابعة وتشغيل الإنتاج &larr;
+                    </button>
+                    <button
+                      onClick={() => setNotificationsOpen(false)}
+                      className="text-[11px] text-slate-400 hover:text-slate-600"
+                    >
+                      إغلاق
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* User Profile & Quick Switcher */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setUserDropdownOpen(!userDropdownOpen);
+                  setNotificationsOpen(false);
+                }}
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200/80 border border-slate-200 transition text-xs text-slate-800 font-semibold cursor-pointer"
                 title="تغيير المستخدم لاختبار الصلاحيات"
               >
                 <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shadow-xs">

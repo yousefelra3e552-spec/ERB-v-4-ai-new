@@ -202,6 +202,12 @@ export interface DesignModel {
   print_house?: string;
   print_cost?: number;
 
+  // Expected Delivery & Workshop tracking
+  print_expected_date?: string;
+  sewing_workshop?: string;
+  sewing_expected_date?: string;
+  sewing_pieces_count?: number;
+
   // Split operating notes
   notes_shirt: string;
   notes_pants: string;
@@ -281,6 +287,7 @@ export interface PrintDispatch {
   model_id: string;
   shop_name: string;
   dispatched_at: string;
+  expected_delivery_date?: string;
   pieces_count: number;
   print_type: string;
   cost_per_piece?: number;
@@ -288,6 +295,38 @@ export interface PrintDispatch {
   notes?: string;
   status: DispatchStatus;
   received_at?: string;
+}
+
+export type SewingDispatchStatus = 'في ورشة المكن' | 'قيد الخياطة والتشغيل' | 'تم الاستلام';
+
+export interface SewingDispatch {
+  id: string;
+  model_id: string;
+  workshop_name: string;
+  pieces_count: number;
+  dispatched_at: string;
+  expected_delivery_date: string;
+  status: SewingDispatchStatus;
+  received_at?: string;
+  notes?: string;
+}
+
+export type NotificationUrgency = 'tomorrow' | 'today' | 'overdue';
+export type NotificationStage = 'printing' | 'sewing';
+
+export interface AppNotification {
+  id: string;
+  model_id: string;
+  model_code: string;
+  stage: NotificationStage;
+  source_name: string;
+  expected_date: string;
+  urgency: NotificationUrgency;
+  days_diff: number;
+  title: string;
+  message: string;
+  is_read?: boolean;
+  created_at: string;
 }
 
 export type AccessoryUnit = 'قطعة' | 'دستة' | 'متر' | 'باكو' | 'كيس';

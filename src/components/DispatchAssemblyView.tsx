@@ -39,6 +39,11 @@ export const DispatchAssemblyView: React.FC = () => {
   const [shopName, setShopName] = useState('');
   const [piecesCount, setPiecesCount] = useState<number>(100);
   const [printType, setPrintType] = useState('سلك سكرين مائي');
+  const [expectedDeliveryDate, setExpectedDeliveryDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 2);
+    return d.toISOString().slice(0, 10);
+  });
   const [costPerPiece, setCostPerPiece] = useState<number>(4.5);
   const [notes, setNotes] = useState('');
 
@@ -51,6 +56,7 @@ export const DispatchAssemblyView: React.FC = () => {
       shopName: shopName.trim(),
       piecesCount: Number(piecesCount) || 0,
       printType: printType.trim(),
+      expectedDeliveryDate,
       costPerPiece: canEditPrintingCosts() ? Number(costPerPiece) : undefined,
       notes: notes.trim()
     });
@@ -193,6 +199,7 @@ export const DispatchAssemblyView: React.FC = () => {
                   </>
                 )}
                 <th className="px-6 py-3.5 text-center">تاريخ الإرسال</th>
+                <th className="px-6 py-3.5 text-center">الاستلام المتوقع</th>
                 <th className="px-6 py-3.5 text-center">الحالة</th>
                 <th className="px-6 py-3.5 text-center">الإجراء</th>
               </tr>
@@ -241,6 +248,45 @@ export const DispatchAssemblyView: React.FC = () => {
 
                       <td className="px-6 py-4 text-center text-slate-500 font-mono">
                         {disp.dispatched_at}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        {disp.expected_delivery_date ? (() => {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const exp = new Date(disp.expected_delivery_date);
+                          exp.setHours(0, 0, 0, 0);
+                          const diff = Math.round((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                          const isReceived = disp.status === 'تم الاستلام بالمصنع';
+
+                          if (!isReceived && diff < 0) {
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-red-100 text-red-700 border border-red-300 animate-pulse">
+                                🚨 متأخر ({Math.abs(diff)} يوم)
+                              </span>
+                            );
+                          }
+                          if (!isReceived && diff === 0) {
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300">
+                                ⏰ موعد اليوم!
+                              </span>
+                            );
+                          }
+                          if (!isReceived && diff === 1) {
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                                📅 غداً
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="font-mono text-slate-700 text-xs font-semibold">
+                              {disp.expected_delivery_date}
+                            </span>
+                          );
+                        })() : (
+                          <span className="text-slate-400">-</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span
@@ -380,6 +426,23 @@ export const DispatchAssemblyView: React.FC = () => {
                   </span>
                 </div>
               )}
+
+              {/* Expected Delivery Date */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">
+                  تاريخ الاستلام المتوقع من المطبعة *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={expectedDeliveryDate}
+                  onChange={(e) => setExpectedDeliveryDate(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-mono font-bold focus:ring-2 focus:ring-teal-700 focus:outline-hidden"
+                />
+                <span className="text-[10px] text-slate-400 block mt-0.5">
+                  يُستخدم لحساب التنبيهات الذكية والإشعارات وقوائم المتأخرات تلقائياً.
+                </span>
+              </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1">ملاحظات التشغيل</label>

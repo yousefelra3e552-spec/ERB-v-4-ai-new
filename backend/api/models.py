@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from datetime import date, timedelta
 import json
 
 class Role(models.Model):
@@ -46,6 +47,15 @@ class UserProfile(models.Model):
     is_active = models.BooleanField(default=True, verbose_name="نشط")
     custom_permissions = models.JSONField(default=dict, blank=True, verbose_name="تخصيص صلاحيات إضافية")
 
+    def has_perm(self, perm_name):
+        if self.is_sudo:
+            return True
+        if perm_name in self.custom_permissions:
+            return bool(self.custom_permissions[perm_name])
+        if self.role and hasattr(self.role, perm_name):
+            return getattr(self.role, perm_name)
+        return False
+
     def __str__(self):
         return f"{self.real_name} ({self.username})"
 
@@ -89,6 +99,8 @@ class Accessory(models.Model):
     @property
     def deficit_quantity(self):
         if self.usage_type == 'custom_model':
+            if self.withdrawn_for_model:
+                return 0
             return max(0, self.target_quantity - self.delivered_quantity)
         return max(0, self.min_threshold - self.current_stock)
 
@@ -122,8 +134,16 @@ class ModelItem(models.Model):
     count_after_sewing = models.IntegerField(default=0, blank=True, null=True, verbose_name="العد بعد المكن")
     
     cutter_name = models.CharField(max_length=150, blank=True, null=True, verbose_name="المقصدار")
+    
+    # Printing info
     print_house = models.CharField(max_length=150, blank=True, null=True, verbose_name="المطبعة")
+    print_expected_date = models.DateField(blank=True, null=True, verbose_name="تاريخ الاستلام المتوقع من المطبعة")
     print_cost_per_piece = models.DecimalField(max_digits=10, decimal_places=2, default=0.0, verbose_name="تكلفة الطباعة للقطعة")
+    
+    # Sewing workshop info
+    sewing_workshop = models.CharField(max_length=150, blank=True, null=True, verbose_name="اسم ورشة المكن / الخياطة")
+    sewing_expected_date = models.DateField(blank=True, null=True, verbose_name="تاريخ الاستلام المتوقع من ورشة المكن")
+    sewing_pieces_count = models.IntegerField(default=0, verbose_name="عدد القطع بورشة المكن")
     
     # Separated Notes for Shirt & Pants
     notes_shirt = models.TextField(blank=True, null=True, verbose_name="ملاحظات تشغيل التيشرت")
@@ -193,8 +213,66 @@ class PrintDispatch(models.Model):
     model = models.ForeignKey(ModelItem, on_delete=models.CASCADE, related_name="dispatches")
     print_house = models.CharField(max_length=200, verbose_name="اسم المطبعة")
     pieces_count = models.IntegerField(default=0, verbose_name="عدد القطع المرسلة")
+    print_type = models.CharField(max_length=100, default="سلك سكرين مائي", verbose_name="نوع الطباعة")
     cost_per_piece = models.DecimalField(max_digits=10, decimal_places=2, default=0.0, verbose_name="سعر الطباعة للقطعة")
-    dispatch_date = models.DateField(verbose_name="تاريخ الإرسال")
+    dispatch_date = models.DateField(auto_now_add=True, verbose_name="تاريخ الإرسال")
+    expected_delivery_date = models.DateField(verbose_name="تاريخ الاستلام المتوقع")
     status = models.CharField(max_length=50, default="في المطبعة", verbose_name="الحالة")
     received_date = models.DateField(blank=True, null=True, verbose_name="تاريخ الاستلام")
+    notes = models.TextField(blank=True, null=True, verbose_name="ملاحظات التشغيل")
     created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def is_overdue(self):
+        if self.status != 'تم الاستلام' and self.expected_delivery_date:
+            return self.expected_delivery_date < date.today()
+        return False
+
+
+class SewingDispatch(models.Model):
+    model = models.ForeignKey(ModelItem, on_delete=models.CASCADE, related_name="sewing_dispatches")
+    workshop_name = models.CharField(max_length=200, verbose_name="اسم ورشة المكن / الخياطة")
+    pieces_count = models.IntegerField(default=0, verbose_name="القطع المسلمة للورشة")
+    dispatched_date = models.DateField(auto_now_add=True, verbose_name="تاريخ الخروج للورشة")
+    expected_delivery_date = models.DateField(verbose_name="تاريخ الاستلام المتوقع")
+    status = models.CharField(max_length=50, default="قيد الخياطة والتشغيل", verbose_name="الحالة")
+    received_date = models.DateField(blank=True, null=True, verbose_name="تاريخ الاستلام الفعلي")
+    notes = models.TextField(blank=True, null=True, verbose_name="ملاحظات التشغيل")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def is_overdue(self):
+        if self.status != 'تم الاستلام' and self.expected_delivery_date:
+            return self.expected_delivery_date < date.today()
+        return False
+
+    def __str__(self):
+        return f"خياطة {self.model.model_code} - ورشة {self.workshop_name}"
+
+
+class AppNotification(models.Model):
+    URGENCY_CHOICES = [
+        ('overdue', 'متأخر عن موعد الاستلام'),
+        ('today', 'موعد الاستلام اليوم'),
+        ('tomorrow', 'موعد الاستلام غداً'),
+    ]
+    STAGE_CHOICES = [
+        ('printing', 'المطابع والتطريز'),
+        ('sewing', 'ورش المكن والخياطة'),
+    ]
+
+    title = models.CharField(max_length=255, verbose_name="عنوان التنبيه")
+    message = models.TextField(verbose_name="نص الإشعار")
+    urgency = models.CharField(max_length=20, choices=URGENCY_CHOICES, verbose_name="مستوى الأهمية")
+    stage = models.CharField(max_length=20, choices=STAGE_CHOICES, verbose_name="المرحلة")
+    model = models.ForeignKey(ModelItem, on_delete=models.CASCADE, related_name="notifications")
+    target_name = models.CharField(max_length=200, verbose_name="اسم الجهة (المطبعة أو الورشة)")
+    expected_date = models.DateField(verbose_name="تاريخ الاستلام المتوقع")
+    is_read = models.BooleanField(default=False, verbose_name="تمت القراءة")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-urgency', 'expected_date']
+
+    def __str__(self):
+        return f"[{self.urgency}] {self.title} - {self.model.model_code}"

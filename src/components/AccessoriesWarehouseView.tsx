@@ -67,6 +67,8 @@ export const AccessoriesWarehouseView: React.FC = () => {
   // Alert sidebar state & threshold
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [globalThreshold, setGlobalThreshold] = useState<number>(30);
+  const [alertSectionTab, setAlertSectionTab] = useState<'all' | 'stock' | 'custom_model'>('all');
+  const [modalAlertTab, setModalAlertTab] = useState<'all' | 'stock' | 'custom_model'>('all');
 
   // Transaction active item
   const [activeItem, setActiveItem] = useState<AccessoryItem | null>(null);
@@ -160,6 +162,8 @@ export const AccessoriesWarehouseView: React.FC = () => {
     .filter((entry) => entry.isLow);
 
   const lowStockCount = lowStockItems.length;
+  const stockDeficits = lowStockItems.filter((e) => e.item.usage_type !== 'custom_model');
+  const modelDeficits = lowStockItems.filter((e) => e.item.usage_type === 'custom_model');
 
   // Filtered accessories for the main list/grid
   const filteredAccessories = accessoryItems.filter((item) => {
@@ -398,8 +402,62 @@ export const AccessoriesWarehouseView: React.FC = () => {
           {/* Collapsible Low Stock List */}
           {sidebarOpen && (
             <div className="mt-4 pt-4 border-t border-amber-200/80">
+              {/* Alert Tabs */}
+              <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
+                <button
+                  type="button"
+                  onClick={() => setAlertSectionTab('all')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    alertSectionTab === 'all'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'bg-white/80 text-amber-900 hover:bg-white'
+                  }`}
+                >
+                  <span>الكل (جميع النواقص)</span>
+                  <span className="px-1.5 py-0.5 bg-black/15 text-current text-[10px] rounded-full font-bold">
+                    {lowStockCount}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAlertSectionTab('stock')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    alertSectionTab === 'stock'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'bg-white/80 text-amber-900 hover:bg-white'
+                  }`}
+                >
+                  <span>نواقص الإكسسوارات المستمرة (Stock)</span>
+                  <span className="px-1.5 py-0.5 bg-black/15 text-current text-[10px] rounded-full font-bold">
+                    {stockDeficits.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAlertSectionTab('custom_model')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    alertSectionTab === 'custom_model'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'bg-white/80 text-amber-900 hover:bg-white'
+                  }`}
+                >
+                  <span>نواقص إكسسوارات الموديلات (Model-Specific)</span>
+                  <span className="px-1.5 py-0.5 bg-black/15 text-current text-[10px] rounded-full font-bold">
+                    {modelDeficits.length}
+                  </span>
+                </button>
+              </div>
+
+              {/* Grid of Items */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {lowStockItems.map(({ item, supplier, available, threshold, deficit }) => {
+                {(alertSectionTab === 'stock'
+                  ? stockDeficits
+                  : alertSectionTab === 'custom_model'
+                  ? modelDeficits
+                  : lowStockItems
+                ).map(({ item, supplier, available, threshold, deficit }) => {
                   const isCustom = item.usage_type === 'custom_model';
 
                   return (
@@ -1064,65 +1122,165 @@ export const AccessoriesWarehouseView: React.FC = () => {
                   <Printer className="w-4 h-4" />
                   <span>طباعة ورقة المشتريات</span>
                 </button>
-                <button onClick={() => setShowPrintAlertsModal(false)} className="text-slate-400 hover:text-slate-700">
+                <button onClick={() => setShowPrintAlertsModal(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
                   <X className="w-5 h-5" />
                 </button>
               </div>
+            </div>
+
+            {/* Modal Tabs Bar (no-print) */}
+            <div className="px-6 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center gap-2 no-print overflow-x-auto">
+              <span className="text-xs font-bold text-slate-500 ms-1">عرض وتصفية التقرير:</span>
+              <button
+                type="button"
+                onClick={() => setModalAlertTab('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  modalAlertTab === 'all' ? 'bg-amber-600 text-white shadow-xs' : 'bg-white text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <span>جميع النواقص</span>
+                <span className="px-1.5 py-0.2 bg-black/15 text-[10px] rounded-full font-bold">{lowStockItems.length}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalAlertTab('stock')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  modalAlertTab === 'stock' ? 'bg-amber-600 text-white shadow-xs' : 'bg-white text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <span>نواقص الإكسسوارات المستمرة (Stock)</span>
+                <span className="px-1.5 py-0.2 bg-black/15 text-[10px] rounded-full font-bold">{stockDeficits.length}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalAlertTab('custom_model')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  modalAlertTab === 'custom_model' ? 'bg-amber-600 text-white shadow-xs' : 'bg-white text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <span>نواقص إكسسوارات الموديلات (Model-Specific)</span>
+                <span className="px-1.5 py-0.2 bg-black/15 text-[10px] rounded-full font-bold">{modelDeficits.length}</span>
+              </button>
             </div>
 
             <div className="p-8 overflow-y-auto space-y-6 print:p-0">
               <div className="border-b-2 border-amber-500 pb-3 flex items-center justify-between">
                 <div>
                   <h1 className="text-2xl font-black text-slate-900">
-                    🏭 كشف نواقص ومستلزمات الإنتاج العاجلة (شراء وتوريد)
+                    🏭 كشف طلبيات ونواقص الإكسسوارات العاجلة (شراء وتوريد)
                   </h1>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    تاريخ أمر الشراء: {new Date().toLocaleString('ar-EG', { hour12: false })}
+                    تاريخ أمر الشراء: {new Date().toLocaleString('ar-EG', { hour12: false })} • تصنيف: {modalAlertTab === 'stock' ? 'إكسسوارات مستمرة (Stock)' : modalAlertTab === 'custom_model' ? 'إكسسوارات موديلات خاصة' : 'كافة النواقص المستمرة والمخصصة'}
                   </p>
                 </div>
                 <div className="text-end">
                   <span className="px-3 py-1 bg-amber-100 text-amber-950 rounded-full font-black text-xs border border-amber-300">
-                    إجمالي الأصناف المطلوبة: {lowStockItems.length} صنف
+                    إجمالي الأصناف: {(modalAlertTab === 'stock' ? stockDeficits : modalAlertTab === 'custom_model' ? modelDeficits : lowStockItems).length} صنف
                   </span>
                 </div>
               </div>
 
-              <table className="w-full text-xs text-start border border-slate-200">
-                <thead className="bg-amber-100/70 text-amber-950 font-black border-b border-amber-200">
-                  <tr>
-                    <th className="p-2.5">م</th>
-                    <th className="p-2.5">الكود</th>
-                    <th className="p-2.5">اسم الإكسسوار</th>
-                    <th className="p-2.5">التصنيف</th>
-                    <th className="p-2.5">الموديل المخصص</th>
-                    <th className="p-2.5 text-center">الرصيد المتاح</th>
-                    <th className="p-2.5 text-center">المطلوب كلياً</th>
-                    <th className="p-2.5 text-center font-black text-rose-800">العجز المطلوب شراؤه</th>
-                    <th className="p-2.5">المورد المقترح ورقم الهاتف</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-semibold">
-                  {lowStockItems.map(({ item, supplier, available, threshold, deficit }, idx) => (
-                    <tr key={item.id} className="hover:bg-amber-50/40">
-                      <td className="p-2.5 text-slate-400">{idx + 1}</td>
-                      <td className="p-2.5 font-mono font-bold text-blue-700">{item.code}</td>
-                      <td className="p-2.5 font-bold text-slate-900">{item.name}</td>
-                      <td className="p-2.5 text-slate-600">{item.type_name}</td>
-                      <td className="p-2.5 font-bold text-pink-700">
-                        {item.usage_type === 'custom_model' ? item.custom_model_code || 'خاص' : 'مخزن عام'}
-                      </td>
-                      <td className="p-2.5 text-center text-slate-700">{available} {item.unit}</td>
-                      <td className="p-2.5 text-center text-slate-900 font-bold">{threshold} {item.unit}</td>
-                      <td className="p-2.5 text-center font-black text-rose-700 bg-rose-50 text-sm">
-                        {deficit} {item.unit}
-                      </td>
-                      <td className="p-2.5 text-slate-600 text-[11px]">
-                        {supplier?.name || 'مورد عام'} {supplier?.phone ? `(${supplier.phone})` : ''}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {/* TABLE 1: Stock Deficits */}
+              {(modalAlertTab === 'all' || modalAlertTab === 'stock') && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                    <h3 className="font-black text-sm text-slate-900">
+                      أولاً: نواقص الإكسسوارات المستمرة (رصيد المخزن العام - Stock)
+                    </h3>
+                    <span className="text-xs text-slate-500 font-semibold">({stockDeficits.length} صنف دون حد الأمان)</span>
+                  </div>
+
+                  {stockDeficits.length > 0 ? (
+                    <table className="w-full text-xs text-start border border-slate-200">
+                      <thead className="bg-amber-100/70 text-amber-950 font-black border-b border-amber-200">
+                        <tr>
+                          <th className="p-2.5">م</th>
+                          <th className="p-2.5">الكود</th>
+                          <th className="p-2.5">اسم الإكسسوار</th>
+                          <th className="p-2.5">التصنيف</th>
+                          <th className="p-2.5 text-center">الرصيد المتاح</th>
+                          <th className="p-2.5 text-center">حد الأمان الأدنى</th>
+                          <th className="p-2.5 text-center font-black text-rose-800">العجز المطلوب شراؤه</th>
+                          <th className="p-2.5">المورد المقترح ورقم الهاتف</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-semibold">
+                        {stockDeficits.map(({ item, supplier, available, threshold, deficit }, idx) => (
+                          <tr key={item.id} className="hover:bg-amber-50/40">
+                            <td className="p-2.5 text-slate-400">{idx + 1}</td>
+                            <td className="p-2.5 font-mono font-bold text-blue-700">{item.code}</td>
+                            <td className="p-2.5 font-bold text-slate-900">{item.name}</td>
+                            <td className="p-2.5 text-slate-600">{item.type_name}</td>
+                            <td className="p-2.5 text-center text-slate-700">{available} {item.unit}</td>
+                            <td className="p-2.5 text-center text-slate-900 font-bold">{threshold} {item.unit}</td>
+                            <td className="p-2.5 text-center font-black text-rose-700 bg-rose-50 text-sm">
+                              {deficit} {item.unit}
+                            </td>
+                            <td className="p-2.5 text-slate-600 text-[11px]">
+                              {supplier?.name || 'مورد عام'} {supplier?.phone ? `(${supplier.phone})` : ''}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="text-xs text-slate-400 py-2 italic">لا توجد نواقص في الإكسسوارات المستمرة (رصيد المخزن في أمان).</p>
+                  )}
+                </div>
+              )}
+
+              {/* TABLE 2: Model-Specific Deficits */}
+              {(modalAlertTab === 'all' || modalAlertTab === 'custom_model') && (
+                <div className="space-y-3 pt-4 border-t border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-pink-500"></span>
+                    <h3 className="font-black text-sm text-slate-900">
+                      ثانياً: نواقص إكسسوارات الموديلات المخصصة (حسب تشغيلة الموديل المستهدفة - Model-Specific)
+                    </h3>
+                    <span className="text-xs text-slate-500 font-semibold">({modelDeficits.length} صنف عجز توريد)</span>
+                  </div>
+
+                  {modelDeficits.length > 0 ? (
+                    <table className="w-full text-xs text-start border border-slate-200">
+                      <thead className="bg-pink-100/70 text-pink-950 font-black border-b border-pink-200">
+                        <tr>
+                          <th className="p-2.5">م</th>
+                          <th className="p-2.5">الكود</th>
+                          <th className="p-2.5">اسم الإكسسوار</th>
+                          <th className="p-2.5">الموديل المخصص</th>
+                          <th className="p-2.5 text-center">الكمية الموردة</th>
+                          <th className="p-2.5 text-center">الكمية المستهدفة</th>
+                          <th className="p-2.5 text-center font-black text-rose-800">العجز المطلوب توريده</th>
+                          <th className="p-2.5">المورد ورقم الهاتف</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-semibold">
+                        {modelDeficits.map(({ item, supplier, available, threshold, deficit }, idx) => (
+                          <tr key={item.id} className="hover:bg-pink-50/40">
+                            <td className="p-2.5 text-slate-400">{idx + 1}</td>
+                            <td className="p-2.5 font-mono font-bold text-blue-700">{item.code}</td>
+                            <td className="p-2.5 font-bold text-slate-900">{item.name}</td>
+                            <td className="p-2.5 font-black text-pink-700">موديل {item.custom_model_code || 'خاص'}</td>
+                            <td className="p-2.5 text-center text-slate-700">{item.delivered_quantity ?? item.quantity} {item.unit}</td>
+                            <td className="p-2.5 text-center text-slate-900 font-bold">{threshold} {item.unit}</td>
+                            <td className="p-2.5 text-center font-black text-rose-700 bg-rose-50 text-sm">
+                              {deficit} {item.unit}
+                            </td>
+                            <td className="p-2.5 text-slate-600 text-[11px]">
+                              {supplier?.name || 'مورد عام'} {supplier?.phone ? `(${supplier.phone})` : ''}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="text-xs text-slate-400 py-2 italic">لا توجد نواقص في إكسسوارات الموديلات المخصصة.</p>
+                  )}
+                </div>
+              )}
 
               <div className="pt-6 border-t border-slate-200 text-xs text-slate-500 flex justify-between">
                 <span>توقيع مسؤول المشتريات: ______________________</span>
