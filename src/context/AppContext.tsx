@@ -29,6 +29,8 @@ import {
   InternalMessage
 } from '../types';
 
+const API_BASE = 'https://erb-v-4-new.onrender.com/api';
+
 interface FlashMessage {
   id: string;
   type: 'success' | 'danger' | 'warning' | 'info';
@@ -664,6 +666,24 @@ const INITIAL_USERS: User[] = [
     is_active: true
   }
 ];
+
+// Fetch initial data from Render Backend
+  useEffect(() => {
+    const fetchBackendData = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/models/`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setModels(data);
+          }
+        }
+      } catch (err) {
+        console.warn('Backend sleeping or offline, using local data:', err);
+      }
+    };
+    fetchBackendData();
+  }, []);
 
 const INITIAL_SIZES: SizeDef[] = [
   { id: 'size-1', name: 'بيبي', values: '1, 2, 3' },
@@ -2038,7 +2058,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Design Actions
-  const addDesignModel = (data: {
+const addDesignModel = (data: {
     modelCode: string;
     modelType: string;
     sizeCategoryId?: string;
@@ -2085,9 +2105,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ]
     };
 
+    // Update UI immediately
     setModels((prev) => [newModel, ...prev]);
+
+    // Send to Render Backend & Neon Database
+    fetch(`${API_BASE}/models/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(newModel)
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('API save failed');
+        return res.json();
+      })
+      .then(() => {
+        addFlashMessage(`تم إنشاء الموديل ${cleanCode} وحفظه بالسيرفر بنجاح`);
+      })
+      .catch((err) => {
+        console.error('API Error:', err);
+        addFlashMessage(`تم الحفظ محلياً فقط (تعذر الاتصال بالسيرفر)`, 'warning');
+      });
+
     logAction('التصميم', `إنشاء موديل جديد: ${cleanCode}`);
-    addFlashMessage(`تم إنشاء الموديل ${cleanCode} بنجاح`);
     return { success: true, message: 'تم إنشاء الموديل بنجاح', modelId: newModelId };
   };
 
