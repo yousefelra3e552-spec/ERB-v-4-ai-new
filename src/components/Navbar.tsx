@@ -18,7 +18,8 @@ import {
   Clock,
   Calendar,
   CheckCircle2,
-  MessageSquare
+  MessageSquare,
+  BarChart3
 } from 'lucide-react';
 import { InternalMessagingModal } from './InternalMessagingModal';
 
@@ -96,6 +97,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onLog
       icon: GitCommit,
       color: 'text-cyan-600',
       isVisible: hasPermission('models_tracking') || isSudo || currentUser?.role === 'owner'
+    },
+    {
+      id: 'reports',
+      label: 'التقارير والإحصائيات',
+      icon: BarChart3,
+      color: 'text-amber-600',
+      isVisible: hasPermission('reports') || isSudo || currentUser?.role === 'owner' || currentUser?.role === 'مدير عام المصنع'
     },
     {
       id: 'settings',

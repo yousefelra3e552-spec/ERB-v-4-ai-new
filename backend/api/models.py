@@ -20,6 +20,7 @@ class Role(models.Model):
     can_qc = models.BooleanField(default=False, verbose_name="الفرز والكنترول")
     can_sewing = models.BooleanField(default=False, verbose_name="قسم المكن")
     can_models_tracking = models.BooleanField(default=False, verbose_name="حركة وتفاصيل الموديلات")
+    can_reports = models.BooleanField(default=False, verbose_name="التقارير والإحصائيات")
     
     # Financial Permissions
     can_view_fabric_prices = models.BooleanField(default=False, verbose_name="رؤية أسعار القماش")

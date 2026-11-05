@@ -4,7 +4,7 @@ from .views import (
     RoleViewSet, UserProfileViewSet, FabricViewSet,
     AccessoryViewSet, ModelItemViewSet, CuttingRecordViewSet,
     QCRecordViewSet, PrintDispatchViewSet, SewingDispatchViewSet,
-    NotificationViewSet, InternalMessageViewSet
+    NotificationViewSet, InternalMessageViewSet, ReportsViewSet
 )
 
 router = DefaultRouter()
@@ -19,6 +19,7 @@ router.register(r'dispatches', PrintDispatchViewSet)
 router.register(r'sewing-dispatches', SewingDispatchViewSet)
 router.register(r'notifications', NotificationViewSet, basename='notifications')
 router.register(r'internal-messages', InternalMessageViewSet, basename='internal-messages')
+router.register(r'reports', ReportsViewSet, basename='reports')
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -22,6 +22,7 @@ from .services import (
     dispatch_model_to_sewing_service,
     receive_model_from_sewing_service
 )
+from .reports import get_production_report
 from .permissions import HasDynamicSectionPermission
 
 class BasePermViewSet(viewsets.ModelViewSet):
@@ -305,4 +306,41 @@ class InternalMessageViewSet(BasePermViewSet):
         msg.is_read = True
         msg.save()
         return Response({'status': 'marked as read', 'message_id': msg.id})
+
+
+class ReportsViewSet(viewsets.ViewSet):
+    """
+    Production Analytics & Aggregation Reports (Cutting, Printing, QC, Sewing).
+    Supports Daily, Weekly, and Monthly grouping with Trunc and Aggregations.
+    Enforces can_reports / reports_view permission.
+    """
+    def list(self, request):
+        username = request.headers.get('X-User-Username') or getattr(request.user, 'username', 'sudo')
+        user_profile = None
+        try:
+            user_profile = UserProfile.objects.select_related('role').get(username=username)
+        except UserProfile.DoesNotExist:
+            pass
+
+        # Permission check: must have can_reports or be sudo
+        if user_profile and not user_profile.is_sudo:
+            if not user_profile.has_perm('can_reports') and not user_profile.has_perm('reports_view'):
+                return Response(
+                    {'error': 'ليس لديك صلاحية الاطلاع على التقارير والإحصائيات. يرجى مراجعة إدارة Sudo.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+        section = request.query_params.get('section', 'cutting')
+        period = request.query_params.get('period', 'daily')
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+
+        report_data = get_production_report(
+            section=section,
+            period=period,
+            date_from=date_from,
+            date_to=date_to
+        )
+        return Response(report_data)
+
 

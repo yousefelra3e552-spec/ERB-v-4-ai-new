@@ -13,6 +13,7 @@ import { ProductionControlView } from './components/ProductionControlView';
 import { MasterModelTrackingView } from './components/MasterModelTrackingView';
 import { SettingsView } from './components/SettingsView';
 import { AuditLogsView } from './components/AuditLogsView';
+import { ReportsView } from './components/ReportsView';
 import { LoginModal } from './components/LoginModal';
 
 export const App: React.FC = () => {
@@ -58,6 +59,7 @@ export const App: React.FC = () => {
       );
     }
     if (tab === 'models_tracking') return hasPermission('models_tracking') || isSudoOrAdmin;
+    if (tab === 'reports') return hasPermission('reports') || isSudoOrAdmin;
     if (tab === 'settings' || tab === 'logs') return isSudoOrAdmin;
     return true;
   };
@@ -160,6 +162,9 @@ export const App: React.FC = () => {
 
         {/* Master Model Tracking */}
         {currentTab === 'models_tracking' && <MasterModelTrackingView />}
+
+        {/* Reports & Analytics Section */}
+        {currentTab === 'reports' && <ReportsView />}
 
         {/* Settings & Audit Logs */}
         {currentTab === 'settings' && (

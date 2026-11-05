@@ -111,11 +111,11 @@ export const SYSTEM_SECTIONS: {
   },
   {
     key: 'reports',
-    label: 'طباعة التقارير',
-    description: 'تصدير كشوفات الإكسل وسجلات التدقيق والجرد الإجمالي',
+    label: 'التقارير والإحصائيات (Reports & Analytics)',
+    description: 'مركز متابعة تقارير الإنتاجية المجمعة (القص، المطابع، الفرز، المكن) يومياً وأسبوعياً وشهرياً وطباعة المستندات الرسمية',
     icon: FileSpreadsheet,
-    color: 'text-slate-600',
-    bgColor: 'bg-slate-50 border-slate-200'
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-50 border-amber-200'
   }
 ];
 
