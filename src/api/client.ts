@@ -3,7 +3,7 @@
  * Handles full REST endpoints with local caching & optimistic fallback
  */
 
-const BASE_URL = '/api';
+const BASE_URL = 'https://erb-v-4-new.onrender.com/api';
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const currentUser = localStorage.getItem('factory_erp_current_user');
